@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>진짜 있는 말? · 정직한 신조어 해석기</title>
+<meta name="description" content="모르는 신조어를 AI에게 묻기 전에, 그 말이 진짜 쓰이는지부터 확인해 주는 해석기. 쓰이는 말이면 뜻과 출처를, 흔적이 없으면 AI에게 안전하게 묻는 법을 알려 줍니다.">
+<meta name="theme-color" content="#18222E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<!-- 링크 공유 미리보기. 공개 주소가 생기면 og:image 를 그 주소로 바꿔 주세요 (README 참고) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="진짜 있는 말?">
+<meta property="og:title" content="진짜 있는 말? · 정직한 신조어 해석기">
+<meta property="og:description" content="모르는 신조어, AI에게 묻기 전에 진짜 쓰이는 말인지부터 확인하세요.">
+<meta property="og:image" content="https://paper-to-app.vercel.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="hero">
+  <div class="wrap hero-grid">
+    <h1 class="brand">진짜 있는 말<span class="q">?</span></h1>
+    <div class="hero-text">
+      <p class="lead">이 앱은 모르는 신조어를 만난 사람이 AI가 지어낸 뜻에 속지 않게, <strong>그 말이 진짜 쓰이는지부터</strong> 확인해 줍니다.</p>
+      <p class="sublead">쓰이는 말이면 뜻과 출처를, 쓰인 흔적이 없으면 AI에게 안전하게 묻는 법을 알려 드려요.</p>
+      <p class="paper">근거 논문: <cite>「AI는 모르는 신조어 앞에서 모른다고 말하는가 — 한국어 가짜 신조어의 형성 방식과 AI의 뜻 지어내기」</cite> (김가은, 2026)</p>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="wrap layout">
+ <div class="tool">
+  <div class="tabs" role="tablist" aria-label="할 일 고르기">
+    <button role="tab" id="tab-find" aria-controls="panel-find" aria-selected="true">말 찾기</button>
+    <button role="tab" id="tab-check" aria-controls="panel-check" aria-selected="false" tabindex="-1">AI 답 점검</button>
+    <button role="tab" id="tab-quiz" aria-controls="panel-quiz" aria-selected="false" tabindex="-1">진짜? 가짜?</button>
+  </div>
+
+  <section id="panel-find" role="tabpanel" aria-labelledby="tab-find">
+    <form id="find-form" class="field" autocomplete="off" novalidate>
+      <div class="combo">
+        <label for="q" class="visually-hidden">찾을 말</label>
+        <input id="q" name="q" type="search" inputmode="search" enterkeyhint="search" maxlength="200"
+               placeholder="모르는 말 넣기 (예: 얼죽아)" role="combobox" aria-autocomplete="list"
+               aria-expanded="false" aria-controls="ac">
+        <ul id="ac" class="ac" role="listbox" aria-label="추천하는 말" hidden></ul>
+      </div>
+      <button type="submit" class="primary">찾기</button>
+    </form>
+    <div class="try">
+      <span>해 보기</span>
+      <button type="button" class="chip" data-q="얼죽아" title="사전에 있는 말">얼죽아</button>
+      <button type="button" class="chip" data-q="퇴노듣" title="논문에서 만든 가짜 말">퇴노듣</button>
+      <span class="try-sep" aria-hidden="true">·</span>
+      <span>초성도 돼요</span>
+      <button type="button" class="chip" data-q="ㄱㅂㅆ">ㄱㅂㅆ</button>
+    </div>
+    <div id="find-result" class="result" aria-live="polite"></div>
+
+    <div id="home" class="home">
+      <div id="recent" class="recent" hidden>
+        <div class="sec-head">
+          <h2 class="sec-h">최근 찾은 말</h2>
+          <button type="button" class="link" id="recent-clear">모두 지우기</button>
+        </div>
+        <div id="recent-list" class="sugg"></div>
+      </div>
+
+      <div class="browse">
+        <div class="sec-head">
+          <h2 class="sec-h">사전에 있는 말 둘러보기</h2>
+          <span class="legend-dot"><span class="dot" aria-hidden="true"></span> 쓸 때 주의할 말</span>
+        </div>
+        <div id="cats" class="cats" role="group" aria-label="분류 고르기"></div>
+        <div id="browse-list" class="sugg"></div>
+        <button type="button" class="ghost more-btn" id="browse-more" hidden></button>
+      </div>
+    </div>
+  </section>
+
+  <section id="panel-check" role="tabpanel" aria-labelledby="tab-check" hidden>
+    <p class="hint">다른 AI에게 신조어 뜻을 물어 받은 답을 붙여 넣으세요. 그 답이 뜻을 <strong>단정했는지</strong>, <strong>추측이라고 밝혔는지</strong>, <strong>모른다고 했는지</strong> 논문의 분류 기준으로 알려 드려요.</p>
+    <p id="score-note" class="hint small" hidden></p>
+    <form id="check-form" autocomplete="off" novalidate>
+      <label for="cw" class="lbl">물어본 말 <span class="opt">(넣으면 더 정확하게 봐요)</span></label>
+      <input id="cw" type="text" maxlength="60" placeholder="예: 퇴노듣">
+      <label for="ca" class="lbl">AI가 한 답</label>
+      <textarea id="ca" rows="6" maxlength="6000" placeholder="AI 답변을 그대로 붙여 넣으세요"></textarea>
+      <div class="row">
+        <button type="submit" class="primary">믿어도 될지 확인하기</button>
+        <button type="button" class="ghost" id="sample-answer">예시 답변으로 해 보기</button>
+      </div>
+      <p class="hint small">붙여 넣은 답은 어디에도 보내거나 저장하지 않아요. 개인적인 대화가 섞여 있다면 지우고 넣어 주세요.</p>
+    </form>
+    <div id="check-result" class="result" aria-live="polite"></div>
+  </section>
+
+  <section id="panel-quiz" role="tabpanel" aria-labelledby="tab-quiz" hidden>
+    <div id="quiz"></div>
+  </section>
+ </div>
+
+  <aside class="about" aria-labelledby="about-h">
+    <details id="about-d" class="about-d" open>
+      <summary><h2 id="about-h">논문이 밝힌 것, 이 앱이 쓰는 것</h2></summary>
+      <dl class="facts">
+        <div><dt>묻는 말이 바뀌면</dt><dd>줄임말처럼 생긴 가짜 말을 “무슨 뜻이야?”로 물으면 AI가 <b id="f-premise"></b>를 단정했고, “실제로 있어?”로 물으면 <b id="f-confirm"></b>였어요. 그래서 이 앱은 <b>있는지부터 묻는 질문</b>을 만들어 드려요.</dd></div>
+        <div><dt>말의 생김새가 바뀌면</dt><dd>줄임말처럼 생긴 가짜 말은 <b id="f-abbr"></b>, 낯선 글자가 섞인 가짜 말은 <b id="f-random"></b>를 단정했어요(두 질문 합산). 새 단어로 한 두 번째 실험에서도 같은 차이가 나왔어요. 그래서 쓰인 흔적이 없는 말에는 생김새에 따른 위험을 알려 드려요.</dd></div>
+        <div><dt>AI마다 달라요</dt><dd id="f-models"></dd></div>
+        <div><dt>있는지 확인하는 방법</dt><dd>논문에서 가짜 말을 검증할 때 쓴 방법 그대로, <b>우리말샘 등재</b>와 <b>네이버 블로그·카페 글</b>에서 그 말이 쓰였는지 찾아봐요.</dd></div>
+      </dl>
+      <p class="src" id="f-basis"></p>
+      <details class="more">
+        <summary>생김새 판정 규칙은 어떻게 만들었나요?</summary>
+        <p>한글 세 글자 말의 글자 하나하나가 일상 낱말에 자주 나오는 글자인지 봅니다. 모두 흔한 글자면 “줄임말처럼 생긴 말”, 끝 글자가 -족·-템·-력·-짤·-러이면 “아는 말에 꼬리를 붙인 말”, 흔하지 않은 글자가 섞이면 “낯선 글자가 섞인 말”로 봅니다. 이 규칙으로 논문에 쓴 가짜 단어 70개를 판정해 보니 68개가 논문과 같은 유형으로 나왔어요(다른 것: 똬리력, 퓨겸다).</p>
+      </details>
+    </details>
+  </aside>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-grid">
+    <p><strong>보내는 것은 찾은 낱말 하나뿐이에요.</strong> 실제 쓰임을 확인하려고 그 낱말만 우리말샘·네이버 검색에 보내요. AI 답 점검에 붙여 넣은 글은 어디에도 보내지 않아요. 찾은 말 목록은 이 기기에만 남고 “모두 지우기”로 지울 수 있어요.</p>
+    <p>사전 기준일 <span id="dict-date"></span> · 실린 말 <span id="dict-count"></span>개. “우리말샘 등재 확인” 표시는 논문 대조군으로 국립국어원 우리말샘 등재를 확인한 말이고, 나머지 뜻과 예문은 이 앱이 직접 정리했어요.</p>
+    <p>이 앱은 말이 실제로 있는지 최종 판정하지 않아요. 흔적을 찾지 못했다는 것은 “아직 확인하지 못했다”는 뜻이에요. <a id="report-link" class="report" hidden target="_blank" rel="noopener">빠진 말 알려 주기</a></p>
+    <div class="install">
+      <button type="button" class="ghost small" id="install" aria-expanded="false" aria-controls="install-help">휴대폰 홈 화면에 추가하기</button>
+      <div id="install-help" class="install-help" hidden></div>
+    </div>
+  </div>
+</footer>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script src="checker_score.js"></script>
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
