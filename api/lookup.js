@@ -25,9 +25,18 @@ function validWord(raw) {
   return w;
 }
 
-async function getJson(url, headers) {
+// 실패 이유를 키가 드러나지 않는 짧은 말로 바꾼다 (화면에서 원인을 찾을 수 있게)
+function why(e) {
+  var m = String((e && e.message) || '');
+  if (e && e.name === 'AbortError') return 'timeout';
+  if (/^HTTP \d+/.test(m)) return m.replace(' ', '-').toLowerCase();
+  if (/json/i.test(m)) return 'bad-json';
+  return 'network';
+}
+
+async function getJson(url, headers, ms) {
   var ctrl = new AbortController();
-  var t = setTimeout(function () { ctrl.abort(); }, TIMEOUT_MS);
+  var t = setTimeout(function () { ctrl.abort(); }, ms || TIMEOUT_MS);
   try {
     var r = await fetch(url, { headers: headers || {}, signal: ctrl.signal });
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -37,12 +46,18 @@ async function getJson(url, headers) {
 
 // ── 우리말샘: 표제어가 정확히 같은 항목의 뜻풀이 ──
 async function checkDict(word) {
-  var key = process.env.OPENDICT_API_KEY;
+  var key = (process.env.OPENDICT_API_KEY || '').trim();
   if (!key) return { status: 'off' };
   try {
-    var url = 'https://opendict.korean.go.kr/api/search?key=' + encodeURIComponent(key) +
+    var path = '//opendict.korean.go.kr/api/search?key=' + encodeURIComponent(key) +
       '&q=' + encodeURIComponent(word) + '&req_type=json&part=word&num=10&advanced=n';
-    var data = await getJson(url);
+    var data;
+    try { data = await getJson('https:' + path, null, 6000); }
+    catch (e1) {
+      if (/^HTTP 4/.test(String(e1 && e1.message))) throw e1;
+      data = await getJson('http:' + path, null, 6000); // https가 안 되면 http로 한 번 더
+    }
+    if (data && data.error) return { status: 'error', reason: 'api-' + String(data.error.error_code || data.error.message || 'error').slice(0, 20) };
     var items = data && data.channel && data.channel.item;
     if (!items) items = [];
     if (!Array.isArray(items)) items = [items];
@@ -58,7 +73,7 @@ async function checkDict(word) {
     });
     return { status: 'ok', found: senses.length > 0, senses: senses };
   } catch (e) {
-    return { status: 'error' };
+    return { status: 'error', reason: why(e) };
   }
 }
 
@@ -105,12 +120,12 @@ async function searchNaver(kind, word, id, secret) {
 }
 
 async function checkWeb(word) {
-  var id = process.env.NAVER_CLIENT_ID, secret = process.env.NAVER_CLIENT_SECRET;
+  var id = (process.env.NAVER_CLIENT_ID || '').trim(), secret = (process.env.NAVER_CLIENT_SECRET || '').trim();
   if (!id || !secret) return { status: 'off' };
   var w = word.replace(/\s+/g, ' ');
   var results = await Promise.allSettled([searchNaver('blog', w, id, secret), searchNaver('cafearticle', w, id, secret)]);
   var ok = results.filter(function (r) { return r.status === 'fulfilled'; }).map(function (r) { return r.value; });
-  if (!ok.length) return { status: 'error' };
+  if (!ok.length) return { status: 'error', reason: why(results[0].reason) };
   var hits = [], checked = 0;
   ok.forEach(function (r) { checked += r.checked; hits = hits.concat(r.hits); });
   var level = hits.length >= USED_MIN ? 'used' : hits.length > 0 ? 'rare' : 'none';
