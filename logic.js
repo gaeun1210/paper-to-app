@@ -231,7 +231,9 @@
         '널리 쓰이는 말은 아니', '널리 정해진', '알려진 신조어는 아니', '표준적인 신조어는 아니', '흔히 쓰이는 말은 아니',
         '사전에 없', '등재되어 있지 않', '실제로 있는 말은 아니', '실제로 쓰이는 말은 아니',
         '신조어는 아니', '신조어는 아닌', '신조어가 아니', '신조어가 아닌', '표준어는 아니', '표현은 아니', '말은 아니', '말은 아닌',
-        '아닌 것으로 보여', '아닌 것으로 보입', '아닌 것 같'],
+        '아닌 것으로 보여', '아닌 것으로 보입', '아닌 것 같',
+        '신조어는 아닙', '신조어가 아닙', '표준어는 아닙', '표현은 아닙', '표현이 아닙', '말은 아닙', '말이 아닙', '단어는 아닙', '단어가 아닙',
+        '정착된 신조어로 확인되', '확인되는 표현은 아'],
     C: ['어디서 보', '어디에서 보', '어디서 봤', '어디에서 봤', '어디서 들었', '어디에서 들었', '문장 전체', '쓰인 문장', '어디서 접', '어디에서 접', '어디서 들', '맥락', '알려 주시면', '알려주시면', '알려 주면', '알려주면',
         '문장을 보여', '보여 주시면', '보여주시면', '보여 주면', '보여주면', '앞뒤 문장', '상황을 알려'],
     B: ['오타', '잘못 입력', '오기', '말씀하신 건가', '말씀하시는 건가', '를 말하는 건가', '을 말하는 건가', '혹시 다른 말'],
@@ -271,19 +273,28 @@
   }
   function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
+  // 같은 자리에 겹쳐 걸린 단서는 하나로 센다 ("확인되는 표현은 아닙니다"가 세 번 세어지지 않게)
+  function dedupe(list) {
+    list.sort(function (a, b) { return a.start - b.start || b.end - a.end; });
+    var out = [], end = -1;
+    list.forEach(function (x) { if (x.start >= end) { out.push(x); end = x.end; } else if (x.end > end) { out[out.length - 1].end = x.end; out[out.length - 1].text += ''; end = x.end; } });
+    return out;
+  }
+
   // 돌려주는 값: { status, code, hits:{A,B,C,D,DEF,SRC}, hasSource, reason }
   // code: E(단정) | D(추측 표시) | A(모른다고 함) | B(다른 말로 봄) | C(맥락 요청) | U(분명하지 않음 → 조심)
   // 원칙: 애매하면 사용자를 안심시키는 쪽이 아니라 조심하게 하는 쪽으로 기운다.
   function checkAnswer(raw, word) {
     if (typeof raw !== 'string') return { status: 'empty' };
-    var text = raw.normalize('NFC').replace(/[ \t]+/g, ' ').trim();
+    // AI 답을 복사하면 딸려 오는 굵은 글씨 표시(**, \*\*, __)와 제목 표시(#)를 지운다
+    var text = raw.normalize('NFC').replace(/\\?\*\\?\*|__/g, '').replace(/^#{1,6}\s+/gm, '').replace(/[ \t]+/g, ' ').trim();
     if (!text) return { status: 'empty' };
     if (text.length < 8 || !/[가-힣]/.test(text)) return { status: 'invalid' };
     var cut = false;
     if (text.length > 4000) { text = text.slice(0, 4000); cut = true; }
     var w = typeof word === 'string' ? word.normalize('NFC').trim().slice(0, 30) : '';
     var hits = {};
-    Object.keys(CUES).forEach(function (k) { hits[k] = findCues(text, CUES[k]); });
+    Object.keys(CUES).forEach(function (k) { hits[k] = dedupe(findCues(text, CUES[k])); });
     // 풀이 문장도 단정 신호로 더한다 (겹치는 단서는 한 번만 셈)
     defSentences(text, w || null).forEach(function (d) {
       var dup = hits.DEF.some(function (x) { return x.start >= d.start && x.end <= d.end; });
