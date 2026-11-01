@@ -214,7 +214,9 @@
     if (webOk && w.level === 'rare') return { state: 'rare', web: w, dictChecked: dictOk };
     if (webOk && w.level === 'none') return { state: 'none', web: w, dictChecked: dictOk };
     if (dictOk) return { state: 'unknown', dictChecked: true };
-    return { state: 'unknown' };
+    // 키가 아직 없음(off) / 연결 실패(error)를 나눠 안내 문구를 다르게 한다
+    var off = d.status === 'off' && (w.status === 'off' || !w.status);
+    return { state: 'unknown', off: off };
   }
 
   // 논문에서 만든 가짜 단어인지 (연구 1·2의 70개)

@@ -340,7 +340,9 @@
       .then(function (data) {
         var r = L.interpretLookup(data);
         r.checkedAt = data && data.checkedAt;
-        if (r.state === 'unknown') r.why = '지금은 실제 쓰임 확인 서비스에 연결하지 못했어요. 잠시 뒤 다시 찾아 주세요.';
+        if (r.state === 'unknown') r.why = r.off
+          ? '실제 쓰임 확인 기능은 아직 준비 중이에요. 그래서 이 말이 쓰이는지는 알려 드리지 못해요.'
+          : '지금은 실제 쓰임 확인 서비스에 연결하지 못했어요. 잠시 뒤 다시 찾아 주세요.';
         done(r);
       })
       .catch(function () { done({ state: 'unknown', why: '인터넷 연결이 없거나 확인이 늦어져 실제 쓰임을 찾지 못했어요. 잠시 뒤 다시 찾아 주세요.' }); })
