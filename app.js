@@ -182,9 +182,12 @@
       var sq = L.safeQuestion(word, withExtra);
       box.textContent = '';
       box.appendChild(qbox('먼저', sq.step1, withExtra ? '앞 문장은 논문에서 시험한 질문, 뒤 문장은 앱이 덧붙인 문장이에요.' : '논문에서 AI가 뜻을 가장 덜 지어낸 질문이에요. 따옴표는 낱말이 조사와 붙어 읽히지 않게 앱이 더했어요.'));
-      box.appendChild(h('div', { class: 'open-row' }, [h('span', { class: 'open-l', text: '이 질문으로 바로 열기' })].concat(L.aiLinks(sq.step1).map(function (a) {
-        return h('a', { class: 'open-ai', href: a.url, target: '_blank', rel: 'noopener', text: a.name + ' ↗' });
-      }))));
+      var links = L.aiLinks(sq.step1);
+      box.appendChild(h('div', { class: 'open-row' }, [h('span', { class: 'open-l', text: '이 질문으로 바로 열기' })].concat(links.map(function (a) {
+        return h('a', { class: 'open-ai', href: a.url, target: '_blank', rel: 'noopener', text: a.name + ' ↗',
+          title: a.copy ? '질문을 복사하고 ' + a.name + '를 열어요. 입력 칸에 붙여 넣어 보내세요.' : null,
+          onclick: a.copy ? function () { copy(sq.step1, '질문을 복사했어요. ' + a.name + ' 입력 칸에 붙여 넣어 보내세요'); } : null });
+      })).concat(links.some(function (a) { return a.copy; }) ? [h('span', { class: 'open-note', text: 'Gemini는 질문이 복사된 채로 열려요. 입력 칸에 붙여 넣기 한 번이 더 필요해요.' })] : [])));
       box.appendChild(qbox('있다고 하면', sq.step2));
     }
     var extra = h('label', { class: 'extra' }, [
@@ -1215,7 +1218,7 @@
     } else {
       var f = it.fake, looksReal = f.type === 'abbr' || f.type === 'suffix';
       why = good ? '맞아요. 논문 실험을 위해 일부러 만든 가짜 말이에요.'
-        : '논문에서 일부러 만든 가짜 말이에요. ' + (looksReal ? '실제 신조어처럼 ' + (f.type === 'abbr' ? '줄임말' : '아는 말에 꼬리를 붙인') + ' 모양이라 진짜처럼 보였을 거예요. 논문에서도 이런 모양일 때 AI가 더 자주 속았어요.' : '낯선 글자가 섞였는데도 진짜처럼 보였다면, 뜻을 짐작하고 싶어지는 마음 때문일 수 있어요.');
+        : '논문에서 일부러 만든 가짜 말이에요. ' + (looksReal ? '실제 신조어처럼 ' + (f.type === 'abbr' ? '줄임말' : '아는 말에 꼬리를 붙인') + ' 모양이라 진짜처럼 보였을 거예요. 논문에서도 이런 모양일 때 AI가 더 자주 속았어요.' : '뜻을 붙일 단서가 없는 글자 조합인데도 진짜처럼 보였다면, 뜻을 짐작하고 싶어지는 마음 때문일 수 있어요.');
       if (f.made) ev.push('만든 사람이 정한 뜻: ' + f.made + ' (AI에게는 알려 주지 않았어요)');
       ev.push('근거: 논문 부록 D — 우리말샘에 없고, 구글·네이버 따옴표 검색에서 쓰인 흔적 0건 (2026년 10월 28일 확인)');
       if (f.e !== null && f.e !== undefined) ev.push('논문 결과: 세 AI에게 두 질문으로 6번 물었더니 ' + f.e + '번 실제 있는 말처럼 뜻을 단정했어요.');

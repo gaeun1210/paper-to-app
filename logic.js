@@ -35,8 +35,8 @@
       source: '연구 1, 가짜 접사 결합형 10개에 대한 응답 60건'
     },
     random: {
-      label: '낯선 글자가 섞인 말',
-      why: '잘 쓰지 않는 글자가 섞여 있어서, AI가 대체로 한국어 낱말이 아니라고 알아채는 모양이에요.',
+      label: '글자를 무작위로 이은 말',
+      why: '뜻을 붙일 단서가 없는 글자 조합이라, AI가 대체로 뜻을 단정하지 않은 모양이에요.',
       premise: { e: 6, n: 90 },    // 연구1 2/30 + 연구2 4/60
       confirm: { e: 0, n: 90 },
       overall: { e: 6, n: 180 },
@@ -199,7 +199,9 @@
     var q = encodeURIComponent(text);
     return [
       { name: 'ChatGPT', url: 'https://chatgpt.com/?q=' + q },
-      { name: 'Claude', url: 'https://claude.ai/new?q=' + q }
+      { name: 'Claude', url: 'https://claude.ai/new?q=' + q },
+      // 제미나이 웹은 주소로 질문을 채우는 기능이 없어, 질문을 복사한 뒤 빈 대화창을 연다
+      { name: 'Gemini', url: 'https://gemini.google.com/app', copy: true }
     ];
   }
 

@@ -1126,3 +1126,6 @@ body[data-tab="check"] .hero .finding, body[data-tab="quiz"] .hero .finding { di
 .usage-verdict.v-none-word p { margin: 0; }
 .usage-verdict button { margin-top: 4px; }
 @media (min-width: 1100px) { .hero .finding { max-width: none; white-space: nowrap; } }
+
+/* 17차: Gemini 버튼 안내 */
+.open-note { flex-basis: 100%; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
