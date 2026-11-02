@@ -963,30 +963,9 @@ a { color: var(--brand); }
 .hero-in { position: relative; z-index: 1; }
 #main { position: relative; z-index: 1; }
 
-/* 2-① 예시 결과 카드 (PC 넓은 화면에서만, 누르면 그 말을 검색) */
-.demo-cards { display: none; }
-@media (min-width: 1400px) {
-  .demo-cards { display: block; position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-  .demo {
-    pointer-events: auto; position: absolute; width: 210px; text-align: left; display: grid; gap: 2px; padding: 14px 16px; cursor: pointer;
-    background: var(--card); color: var(--ink); border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); border-radius: 14px;
-    box-shadow: 0 14px 34px rgba(29, 91, 234, .12), 0 1px 2px rgba(17, 26, 51, .05); font: inherit; transition: transform .2s, box-shadow .2s;
-  }
-  .demo b { font-size: 20px; font-weight: 800; }
-  .demo-m { font-size: 13px; color: var(--muted); }
-  .demo-st { font-size: 12px; font-weight: 800; }
-  .demo-st.ok { color: var(--ok); } .demo-st.use { color: var(--brand); } .demo-st.no { color: var(--seal); }
-  .d1 { left: calc(50% - 380px - 250px); top: 250px; transform: rotate(-5deg); }
-  .d2 { right: calc(50% - 380px - 255px); top: 150px; transform: rotate(4deg); }
-  .d3 { right: calc(50% - 380px - 235px); top: 330px; transform: rotate(-3deg); }
-  .demo:hover { transform: rotate(0) translateY(-4px); box-shadow: 0 18px 40px rgba(29, 91, 234, .18); }
-  .demo:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-}
-
 /* 3-① 첫 화면 등장: 제목 → 소개 → 검색창이 차례로 살짝 떠오름 */
 @media (prefers-reduced-motion: no-preference) {
   @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-  @keyframes pop { from { opacity: 0; translate: 0 18px; } to { opacity: 1; translate: 0 0; } }
   .hero-in > * { animation: rise .55s cubic-bezier(.2, .7, .2, 1) both; }
   .hero-in > .brand { animation-delay: .05s; }
   .hero-in > .tagline { animation-delay: .15s; }
@@ -994,11 +973,6 @@ a { color: var(--brand); }
   .hero-in > .search-pill { animation-delay: .35s; }
   .hero-in > .try { animation-delay: .45s; }
   .hero-in > .paper { animation-delay: .5s; }
-  .demo { animation: pop .6s cubic-bezier(.2, .7, .2, 1) both; }
-  .d1 { animation-delay: .55s; } .d2 { animation-delay: .65s; } .d3 { animation-delay: .75s; }
-  @keyframes float { 50% { translate: 0 -6px; } }
-  .demo-cards .demo { animation: pop .6s cubic-bezier(.2, .7, .2, 1) both, float 5s ease-in-out 1.4s infinite; }
-  .demo-cards .d2 { animation-delay: .65s, 2s; } .demo-cards .d3 { animation-delay: .75s, 2.6s; }
   .result > .entry { animation: rise .35s ease-out both; }
 }
 
@@ -1026,6 +1000,34 @@ a { color: var(--brand); }
   .hero .paper { margin-top: 10px; font-size: 12px; }
   .b1 { width: 300px; height: 300px; } .b2 { width: 320px; height: 320px; right: -160px; } .b3 { display: none; }
 }
-.demo-cards .demo:hover, .demo-cards .demo:focus-visible { animation-play-state: paused; }
-.demo-cards { z-index: 2; }
 .hero-deco { overflow: visible; inset: 0; }
+
+/* ══════════════ 10차: 결과 안내 띠 · 검색 추천 목록이 다른 요소 뒤로 숨지 않게 · 양쪽 끝 맞춤 ══════════════ */
+/* 추천 목록(.ac)이 추천 검색어·기능 카드 위에 보이도록: 첫 화면을 본문보다 위에, 검색창을 첫 화면 안에서 가장 위에 */
+.hero { z-index: 2; }
+.hero-in > .search-pill { position: relative; z-index: 5; }
+
+/* 검색하면 이렇게 알려 드려요 (기능 카드와 같은 폭, 같은 양쪽 끝) */
+.legend { margin: 0 0 20px; }
+.legend-cap { font-size: 13px; font-weight: 700; color: var(--muted); margin: 0 0 10px; }
+.legend-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: var(--card); border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--line)); border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(29, 91, 234, .07); }
+.legend-list li { display: flex; gap: 14px; align-items: flex-start; padding: 18px 22px; min-width: 0; }
+.legend-list li + li { border-left: 1px solid color-mix(in srgb, var(--brand) 10%, var(--line)); }
+.lg-ic { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 16px; }
+.lg-ic.ok { background: var(--ok-soft); color: var(--ok); }
+.lg-ic.use { background: var(--brand-soft); color: var(--brand); }
+.lg-ic.no { background: var(--seal-soft); color: var(--seal); }
+.legend-list b { display: block; font-size: 15px; margin-bottom: 3px; }
+.legend-list span.lg-t { display: block; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+@media (max-width: 720px) {
+  .legend-list { grid-template-columns: 1fr; }
+  .legend-list li { padding: 14px 16px; }
+  .legend-list li + li { border-left: 0; border-top: 1px solid color-mix(in srgb, var(--brand) 10%, var(--line)); }
+}
+
+/* 논문 이야기: 논문 제목 줄은 넓은 화면에서 한 줄로 */
+.hero-sub .paper { max-width: none; }
+@media (min-width: 1100px) { .hero-sub .paper { white-space: nowrap; } }
+.legend-list p { margin: 0; min-width: 0; }

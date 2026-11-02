@@ -34,7 +34,6 @@
       <ul>
         <li><a href="#home" data-view="find" data-scroll="top">홈</a></li>
         <li><a href="#find" data-view="find" data-scroll="q">말 찾기</a></li>
-        <li><a href="#browse" data-view="find" data-scroll="browse">사전 둘러보기</a></li>
         <li><a href="#check" data-view="check">AI 답 점검</a></li>
         <li><a href="#quiz" data-view="quiz">퀴즈</a></li>
         <li><a href="paper.html">논문 이야기</a></li>
@@ -46,11 +45,6 @@
 
 <section class="hero" id="top">
   <div class="hero-deco" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
-  <div class="demo-cards" role="group" aria-label="검색 결과 예시 (눌러서 직접 확인)">
-    <button type="button" class="demo d1" data-q="얼죽아"><span class="demo-st ok">✓ 사전 등재 확인</span><b>얼죽아</b><span class="demo-m">얼어 죽어도 아이스 아메리카노</span></button>
-    <button type="button" class="demo d2" data-q="럭키비키"><span class="demo-st use">● 사용 흔적 발견</span><b>럭키비키</b><span class="demo-m">블로그·카페 글에서 쓰임 확인</span></button>
-    <button type="button" class="demo d3" data-q="퇴노듣"><span class="demo-st no">✕ 쓰인 흔적 없음</span><b>퇴노듣</b><span class="demo-m">논문 실험용으로 만든 가짜 말</span></button>
-  </div>
   <div class="wrap hero-in">
     <h1 class="brand">이 신조어, <span class="hl">진짜야?</span></h1>
     <p class="tagline">AI가 대답한 말, 정말 있는 말인지 확인해 보세요!</p>
@@ -79,6 +73,14 @@
 </section>
 
 <main id="main" class="wrap">
+  <section class="legend" aria-labelledby="legend-cap">
+    <p class="legend-cap" id="legend-cap">검색하면 이렇게 알려 드려요</p>
+    <ul class="legend-list">
+      <li><span class="lg-ic ok" aria-hidden="true">✓</span><p><b>사전 등재 확인</b><span class="lg-t">국립국어원 우리말샘에 뜻이 실린 말이에요.</span></p></li>
+      <li><span class="lg-ic use" aria-hidden="true">●</span><p><b>사용 흔적 발견</b><span class="lg-t">사전엔 없지만 블로그·카페 글에서 실제로 쓰여요.</span></p></li>
+      <li><span class="lg-ic no" aria-hidden="true">✕</span><p><b>확인된 흔적 없음</b><span class="lg-t">찾아본 자료에 쓰인 흔적이 없어요. AI가 뜻을 말해도 의심해 보세요.</span></p></li>
+    </ul>
+  </section>
   <div class="tabs features" role="tablist" aria-label="기능 고르기">
     <button role="tab" id="tab-find" aria-controls="panel-find" aria-selected="true" aria-describedby="td-find"><span class="fc-ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></span><span class="fc-body"><span class="tab-name">말 찾기</span><span class="tab-desc" id="td-find">궁금한 말이 정말 있는지 검색해 보세요.</span></span><svg class="fc-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
     <button role="tab" id="tab-check" aria-controls="panel-check" aria-selected="false" tabindex="-1" aria-describedby="td-check"><span class="fc-ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6L12 3z"/><path d="M8.6 12.2l2.3 2.3 4.6-4.8"/></svg></span><span class="fc-body"><span class="tab-name">AI 답 점검</span><span class="tab-desc" id="td-check">AI의 답변을 붙여 넣고, 답변 태도를 확인해 보세요.</span></span><svg class="fc-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
