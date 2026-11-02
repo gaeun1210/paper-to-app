@@ -1076,3 +1076,15 @@ body[data-tab="check"] .hero .try, body[data-tab="quiz"] .hero .try { display: n
 
 /* 13차: 신조어 둘러보기 — 우리말샘 등재 확인 표시 */
 .wc-ok { color: var(--ok); font-weight: 800; }
+
+/* 14차: 둘러보기에서 누른 단어의 뜻 카드를 그 자리에서 펼침 */
+.word-card.is-open { border-color: var(--brand) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 35%, transparent); }
+.word-detail { grid-column: 1 / -1; background: var(--card); border: 1px solid color-mix(in srgb, var(--brand) 35%, var(--line)); border-radius: var(--radius-lg); padding: 18px 20px; box-shadow: 0 12px 30px rgba(29, 91, 234, .10); }
+.wd-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
+.wd-w { font-size: 24px; font-weight: 800; margin: 0 6px 0 0; }
+.wd-full { margin: 0 0 6px; color: var(--muted); font-size: 14px; }
+.wd-m { margin: 0 0 6px; font-size: 17px; }
+.wd-e { margin: 0 0 6px; }
+.wd-note { margin: 6px 0; font-size: 14px; color: var(--warn); }
+.wd-act { margin-top: 10px; gap: 12px; align-items: center; }
+@media (prefers-reduced-motion: no-preference) { .word-detail { animation: rise .25s ease-out both; } }

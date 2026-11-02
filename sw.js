@@ -1,6 +1,6 @@
 // 인터넷이 끊겨도 열리도록 화면 파일을 보관한다. 항상 새 버전을 먼저 시도한다.
 // 화면 파일을 고쳐 다시 배포할 때는 CACHE 이름의 숫자를 올려 주세요.
-var CACHE = 'jinjja-v19';
+var CACHE = 'jinjja-v20';
 var FILES = ['./', 'index.html', 'paper.html', 'nav.js', 'style.css', 'config.js', 'data.js', 'checker_score.js', 'logic.js', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); }).then(function () { return self.skipWaiting(); }));

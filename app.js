@@ -693,14 +693,16 @@
   }
   function renderBrowse() {
     var list = sortedWords(), box = $('browse-list');
+    openCard = null;
     box.textContent = '';
     list.slice(0, shown).forEach(function (w) {
       // 말 + 뜻 한 줄을 담은 작은 카드 (누르면 위 결과 칸에 뜻·근거가 열림)
-      box.appendChild(h('button', { class: 'chip word-card' + (w.note ? ' caution-chip' : ''), type: 'button',
-        'aria-label': w.w + (w.src === 'paper' ? ' (우리말샘 등재 확인)' : '') + (w.note ? ' (' + w.note + ')' : '') + ' — ' + w.m + '. 눌러서 뜻과 근거 보기',
-        onclick: function () { runFind(w.w); } }, [
+      var card = h('button', { class: 'chip word-card' + (w.note ? ' caution-chip' : ''), type: 'button', 'aria-expanded': 'false', 'aria-controls': 'word-detail',
+        'aria-label': w.w + (w.src === 'paper' ? ' (우리말샘 등재 확인)' : '') + (w.note ? ' (' + w.note + ')' : '') + ' — ' + w.m + '. 눌러서 뜻 펼치기',
+        onclick: function () { toggleWordDetail(card, w); } }, [
           h('span', { class: 'wc-w' }, [w.w, w.src === 'paper' ? h('span', { class: 'wc-ok', 'aria-hidden': 'true', text: ' ✓' }) : null]), h('span', { class: 'wc-m', text: w.m })
-        ]));
+        ]);
+      box.appendChild(card);
     });
     if (!list.length) box.appendChild(h('p', { class: 'empty', text: '조건에 맞는 말이 없어요. 분류나 첫 글자를 “전체”로 바꾸거나, 위 검색창에서 찾아보세요.' }));
     var rest = list.length - shown, more = $('browse-more');
@@ -709,6 +711,55 @@
     var filtered = curCat !== '전체' || curCho !== '전체' || browseQ;
     $('browse-count').textContent = filtered ? '조건에 맞는 말 ' + list.length + '개 (전체 ' + WORDS.length + '개 중) · 가나다순' : '전체 ' + WORDS.length + '개 · 가나다순';
   }
+  // 둘러보기 카드를 누르면 그 자리에서 뜻 카드를 펼친다 (같은 줄의 마지막 카드 다음에 넣어 줄 전체 너비로)
+  var openCard = null;
+  function closeWordDetail(focusBack) {
+    var d = $('word-detail'); if (d) d.remove();
+    if (openCard) { openCard.setAttribute('aria-expanded', 'false'); openCard.classList.remove('is-open'); if (focusBack) openCard.focus(); }
+    openCard = null;
+  }
+  // 뜻 카드를 빼 둔 상태에서 같은 줄의 마지막 카드를 찾은 뒤 그 뒤에 넣는다
+  function placeWordDetail() {
+    var d = $('word-detail'); if (!d || !openCard) return;
+    d.remove();
+    var top = openCard.offsetTop, last = openCard, n = openCard.nextElementSibling;
+    while (n && n.classList.contains('word-card') && n.offsetTop === top) { last = n; n = n.nextElementSibling; }
+    last.after(d);
+  }
+  function toggleWordDetail(card, w) {
+    if (openCard === card) { closeWordDetail(true); return; }
+    closeWordDetail(false);
+    openCard = card; card.setAttribute('aria-expanded', 'true'); card.classList.add('is-open');
+    var d = h('div', { class: 'word-detail', id: 'word-detail', role: 'region', 'aria-label': w.w + ' 뜻' }, [
+      h('div', { class: 'wd-head' }, [
+        h('p', { class: 'wd-w', text: w.w }),
+        h('span', { class: 'badge ' + (w.src === 'paper' ? 'ok' : ''), text: w.src === 'paper' ? '✓ 우리말샘 등재 확인' : '이 앱이 정리한 말' }),
+        w.cat ? h('span', { class: 'badge', text: w.cat }) : null
+      ]),
+      w.full ? h('p', { class: 'wd-full', text: w.full }) : null,
+      h('p', { class: 'wd-m', text: w.m }),
+      w.e ? h('p', { class: 'ex wd-e', text: w.e }) : null,
+      w.note ? h('p', { class: 'wd-note' }, [h('b', { text: w.note + ' · ' }), CAUTION[w.note] || '쓸 때 주의가 필요한 말이에요.']) : null,
+      h('div', { class: 'row wd-act' }, [
+        h('button', { class: 'ghost small', type: 'button', text: '근거·AI 질문까지 보기', onclick: function () { closeWordDetail(false); runFind(w.w); } }),
+        h('button', { class: 'link', type: 'button', text: '접기', onclick: function () { closeWordDetail(true); } })
+      ])
+    ]);
+    card.after(d);
+    placeWordDetail();
+    var r = d.getBoundingClientRect();
+    if (r.bottom > (window.innerHeight || 800)) {
+      var reduce = false; try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+      d.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' });
+    }
+  }
+  window.addEventListener('resize', placeWordDetail);
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || !openCard) return;
+    var d = $('word-detail'), a = document.activeElement;
+    if (a === openCard || (d && d.contains(a))) closeWordDetail(true);
+  });
+
   function pressGroup(boxId, value) {
     Array.prototype.forEach.call($(boxId).children, function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-v') === value ? 'true' : 'false'); });
   }
@@ -1013,7 +1064,6 @@
     quizBox.textContent = '';
     quizBox.appendChild(h('div', { class: 'quiz-intro' }, [
       h('h2', { class: 'sec-h', text: '진짜 쓰이는 말일까, 지어낸 말일까?' }),
-      h('p', { text: '수업이나 가족과 함께 하기 좋아요.' }),
       h('p', { class: 'src', text: '10문제 · 문제마다 정답 이유와 근거를 보여 드려요 · 기록은 남지 않아요' }),
       h('button', { class: 'primary', type: 'button', text: '시작하기', onclick: startQuiz })
     ]));
