@@ -228,7 +228,7 @@
   }
   function checkCta(word, fake) {
     return h('div', { class: 'check-cta' }, [
-      h('p', { class: 'cta-h', text: fake ? 'AI가 이 말의 뜻을 설명했다면, 그건 지어낸 뜻이에요' : 'AI가 이 말의 뜻을 설명했나요?' }),
+      h('p', { class: 'cta-h', text: fake ? 'AI에게 물어봤다면, 받은 답을 점검해 보세요 — 뜻을 설명했다면 그건 지어낸 뜻이에요' : 'AI에게 물어봤다면, 받은 답을 점검해 보세요' }),
       h('p', { text: '논문에서 AI는 없는 신조어에도 뜻을 지어냈어요. 받은 답을 붙여 넣으면, 확인 없이 뜻을 단정했는지와 이 말이 실제로 쓰이는지를 함께 알려 드려요.' }),
       h('button', { class: 'primary', type: 'button', text: '받은 AI 답 점검하기', onclick: function () { goCheckWith(word); } })
     ]);
@@ -473,9 +473,9 @@
     if (f.e !== null && f.e !== undefined) { facts.push(h('p', null, ['세 AI에게 두 가지 질문으로 6번 물었더니 ', h('b', { text: f.e + '번' }), ' 실제 있는 말처럼 뜻을 단정했어요.'])); lines.push('논문 결과: 세 AI·두 질문 6건 중 ' + f.e + '건 뜻을 단정'); }
     if (typeName) facts.push(h('p', { class: 'src', text: '논문에서의 유형: ' + typeName }));
     if (facts.length) kids.push(h('div', { class: 'fact-box' }, facts));
-    kids.push(checkCta(display, true));
     kids.push(questionBlock(display));
     kids.push(riskBlock(f.w));
+    kids.push(checkCta(display, true));
     kids.push(evidenceBlock(rows, [liveSlot(display, function (nr) { rows = rows.concat(nr.map(function (x) { return { label: '지금 다시 확인 · ' + x.label, text: x.text, links: x.links }; })); })]));
     kids.push(actions(display, false, { copy: function () { return copyText(display, 'fake', lines.concat(['AI에게 묻는다면: ' + L.safeQuestion(display).step1]), rows); } }));
     kids.push(paperDetail(f.w, display));
@@ -534,9 +534,9 @@
       kids.push(statusLine('more', '사용 흔적은 ' + web.count + '건뿐이에요.'));
       kids.push(usageInfo(web, false));
       kids.push(samplesBlock(web, display));
-      kids.push(checkCta(display, false));
       kids.push(questionBlock(display));
       kids.push(riskBlock(q));
+      kids.push(checkCta(display, false));
       kids.push(evidenceBlock(rows));
       kids.push(actions(display, false, { links: links, copy: function () { return copyText(display, 'more', ['사용 흔적 ' + web.count + '건', ask], rows); } }));
       kids.push(paperDetail(q, display));
@@ -555,9 +555,9 @@
       kids.push(verdict('쓰인 흔적\n없음', '', display, (r.dictChecked ? '우리말샘에도, ' : '') + '네이버 블로그·카페 글에서도 이 말을 찾지 못했어요. 아주 새로 생겼거나 실제로는 쓰이지 않는 말일 수 있어요.'));
       kids.push(statusLine('none', '없는 단어라는 증명은 아니에요.'));
       kids.push(h('p', { class: 'note-honest' }, ['AI가 이 말의 뜻을 설명해도 ', h('b', { text: '지어낸 뜻일 수 있어요.' }), ' 아래 질문으로 먼저 있는지부터 물어보세요.']));
-      kids.push(checkCta(display, false));
       kids.push(questionBlock(display));
       kids.push(riskBlock(q));
+      kids.push(checkCta(display, false));
       kids.push(evidenceBlock(rows));
       kids.push(actions(display, false, { copy: function () { return copyText(display, 'none', ['없는 단어라는 증명은 아님', ask], rows); } }));
       kids.push(paperDetail(q, display));
