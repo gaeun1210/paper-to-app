@@ -928,3 +928,20 @@ a { color: var(--brand); }
 @media (max-width: 640px) { .features button { min-height: 100px; } .chip-ico { min-height: var(--tap); } }
 @media (max-width: 640px) { .features button { min-height: 108px; } }
 @media (max-width: 480px) { .cat, .cho { min-height: var(--tap); } .cho { min-width: var(--tap); } }
+
+/* ── 7차: 세부 조정 ── */
+/* 2) 소개 문장: PC에서는 한 줄 */
+.hero-in { max-width: 1120px; }
+@media (min-width: 1100px) { .hero .lead { max-width: none; white-space: nowrap; } }
+/* 3) 검색 버튼이 칸 밖으로 튀어나오지 않게: 테두리 안쪽 높이에 꼭 맞춤 */
+.search-pill .primary, .field.search-pill .primary { margin: 0 !important; height: auto !important; min-height: 0 !important; align-self: stretch; border-radius: 0 999px 999px 0; box-shadow: none; }
+.search-pill { align-items: stretch; }
+/* 4) 사전 둘러보기 검색: 입력칸이 남는 폭을 모두 쓰고 버튼은 오른쪽 끝에 */
+.small-pill input[type=search] { flex: 1 1 auto; width: auto; max-width: none !important; min-width: 0; }
+.small-pill .primary { height: auto !important; min-height: 0 !important; }
+/* 초성 버튼: PC·태블릿은 위아래 개수가 비슷한 두 줄, 휴대폰은 한 줄에 7개씩 */
+.chos { display: grid; grid-template-columns: repeat(var(--cho-cols, 11), minmax(0, 52px)); justify-content: center; gap: 8px; }
+.cho { min-width: 0; width: 100%; padding: 0; }
+@media (max-width: 700px) { .chos { grid-template-columns: repeat(7, minmax(0, 1fr)); max-width: 420px; margin-left: auto; margin-right: auto; } }
+.small-pill input[type=search] { flex: 1 1 0; width: 0; }
+.home { grid-template-columns: minmax(0, 1fr); }

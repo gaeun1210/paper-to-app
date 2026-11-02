@@ -681,6 +681,7 @@
       'aria-label': c === '전체' ? '첫 글자 전체' : c === 'A-Z' ? '영어로 시작하는 말' : c + '으로 시작하는 말',
       onclick: function () { curCho = c; shown = PAGE; pressGroup('chos', c); renderBrowse(); } }));
   });
+  $('chos').style.setProperty('--cho-cols', String(Math.ceil(CHOS.length / 2)));
   $('browse-q').addEventListener('input', function () { browseQ = this.value.slice(0, 20); shown = PAGE; renderBrowse(); });
   $('browse-form').addEventListener('submit', function (e) {
     e.preventDefault(); browseQ = $('browse-q').value.slice(0, 20); shown = PAGE; renderBrowse();
