@@ -1099,3 +1099,30 @@ body[data-tab="check"] .hero .try, body[data-tab="quiz"] .hero .try { display: n
 
 /* hidden 속성은 언제나 숨김 (display 규칙이 덮어쓰지 않게) */
 [hidden] { display: none !important; }
+
+/* 16차: 논문 결과 한 줄 · 점검 연결 버튼 · 실제 쓰임 종합 판단 */
+.hero .finding { margin: 18px auto 4px; max-width: 760px; font-size: 15px; color: var(--ink); }
+.hero .finding > b:first-child { display: inline-block; font-size: 12px; font-weight: 800; color: var(--brand); background: var(--brand-soft); border-radius: 999px; padding: 2px 10px; margin-right: 8px; vertical-align: 1px; }
+.hero .finding + .paper { margin-top: 4px; }
+@media (max-width: 480px) { .hero .finding { font-size: 14px; margin-top: 14px; } }
+body[data-tab="check"] .hero .finding, body[data-tab="quiz"] .hero .finding { display: none; }
+@media (prefers-reduced-motion: no-preference) { .hero-in > .finding { animation-delay: .5s; } .hero-in > .paper { animation-delay: .55s; } }
+
+.check-cta { border: 1.5px solid var(--brand); background: var(--brand-soft); border-radius: 14px; padding: 14px 18px; margin: 12px 0; }
+.check-cta p { margin: 0 0 8px; }
+.check-cta .cta-h { font-weight: 800; font-size: 16px; }
+.check-cta .primary { margin-top: 2px; }
+
+.usage-verdict { border-radius: 14px; padding: 14px 18px; margin: 12px 0 14px; border: 1.5px solid var(--line); background: var(--paper); }
+.usage-verdict p { margin: 0 0 6px; }
+.usage-verdict .uv-k { font-size: 12px; font-weight: 800; color: var(--muted); letter-spacing: .02em; }
+.usage-verdict .uv-ex { font-size: 15px; }
+.usage-verdict .uv-t { font-size: 16px; font-weight: 700; }
+.usage-verdict.v-bad { border-color: var(--seal); background: var(--seal-soft); }
+.usage-verdict.v-bad .uv-t { color: var(--seal); }
+.usage-verdict.v-ok { border-color: color-mix(in srgb, var(--ok) 60%, var(--line)); background: var(--ok-soft); }
+.usage-verdict.v-warn { border-color: color-mix(in srgb, var(--warn) 60%, var(--line)); background: var(--warn-soft); }
+.usage-verdict.v-none-word { border-style: dashed; padding: 10px 14px; }
+.usage-verdict.v-none-word p { margin: 0; }
+.usage-verdict button { margin-top: 4px; }
+@media (min-width: 1100px) { .hero .finding { max-width: none; white-space: nowrap; } }

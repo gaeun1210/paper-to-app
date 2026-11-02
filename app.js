@@ -218,6 +218,22 @@
     ]);
   }
 
+  // 쓰인 흔적이 없거나 드문 말: 받은 AI 답을 바로 점검하러 가는 눈에 띄는 버튼 (논문: 없는 말에도 AI가 뜻을 지어냄)
+  function goCheckWith(word) {
+    $('cw').value = word; updateCheckUi();
+    selectTab('check'); markNav('check');
+    try { history.replaceState(null, '', location.pathname + location.search + '#check'); } catch (e) { /* 무시 */ }
+    $('main').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('ca').focus({ preventScroll: true });
+  }
+  function checkCta(word, fake) {
+    return h('div', { class: 'check-cta' }, [
+      h('p', { class: 'cta-h', text: fake ? 'AI가 이 말의 뜻을 설명했다면, 그건 지어낸 뜻이에요' : 'AI가 이 말의 뜻을 설명했나요?' }),
+      h('p', { text: '논문에서 AI는 없는 신조어에도 뜻을 지어냈어요. 받은 답을 붙여 넣으면, 확인 없이 뜻을 단정했는지와 이 말이 실제로 쓰이는지를 함께 알려 드려요.' }),
+      h('button', { class: 'primary', type: 'button', text: '받은 AI 답 점검하기', onclick: function () { goCheckWith(word); } })
+    ]);
+  }
+
   function paperDetail() {
     return h('p', { class: 'paper-more' }, [h('a', { href: 'paper.html#results', text: '이 수치의 근거 보기 (논문 이야기) →' })]);
   }
@@ -457,10 +473,11 @@
     if (f.e !== null && f.e !== undefined) { facts.push(h('p', null, ['세 AI에게 두 가지 질문으로 6번 물었더니 ', h('b', { text: f.e + '번' }), ' 실제 있는 말처럼 뜻을 단정했어요.'])); lines.push('논문 결과: 세 AI·두 질문 6건 중 ' + f.e + '건 뜻을 단정'); }
     if (typeName) facts.push(h('p', { class: 'src', text: '논문에서의 유형: ' + typeName }));
     if (facts.length) kids.push(h('div', { class: 'fact-box' }, facts));
+    kids.push(checkCta(display, true));
     kids.push(questionBlock(display));
     kids.push(riskBlock(f.w));
     kids.push(evidenceBlock(rows, [liveSlot(display, function (nr) { rows = rows.concat(nr.map(function (x) { return { label: '지금 다시 확인 · ' + x.label, text: x.text, links: x.links }; })); })]));
-    kids.push(actions(display, true, { copy: function () { return copyText(display, 'fake', lines.concat(['AI에게 묻는다면: ' + L.safeQuestion(display).step1]), rows); } }));
+    kids.push(actions(display, false, { copy: function () { return copyText(display, 'fake', lines.concat(['AI에게 묻는다면: ' + L.safeQuestion(display).step1]), rows); } }));
     kids.push(paperDetail(f.w, display));
     return h('article', { class: 'entry s-bad' }, kids);
   }
@@ -517,10 +534,11 @@
       kids.push(statusLine('more', '사용 흔적은 ' + web.count + '건뿐이에요.'));
       kids.push(usageInfo(web, false));
       kids.push(samplesBlock(web, display));
+      kids.push(checkCta(display, false));
       kids.push(questionBlock(display));
       kids.push(riskBlock(q));
       kids.push(evidenceBlock(rows));
-      kids.push(actions(display, true, { links: links, copy: function () { return copyText(display, 'more', ['사용 흔적 ' + web.count + '건', ask], rows); } }));
+      kids.push(actions(display, false, { links: links, copy: function () { return copyText(display, 'more', ['사용 흔적 ' + web.count + '건', ask], rows); } }));
       kids.push(paperDetail(q, display));
       return h('article', { class: 'entry s-warn' }, kids);
     }
@@ -537,10 +555,11 @@
       kids.push(verdict('쓰인 흔적\n없음', '', display, (r.dictChecked ? '우리말샘에도, ' : '') + '네이버 블로그·카페 글에서도 이 말을 찾지 못했어요. 아주 새로 생겼거나 실제로는 쓰이지 않는 말일 수 있어요.'));
       kids.push(statusLine('none', '없는 단어라는 증명은 아니에요.'));
       kids.push(h('p', { class: 'note-honest' }, ['AI가 이 말의 뜻을 설명해도 ', h('b', { text: '지어낸 뜻일 수 있어요.' }), ' 아래 질문으로 먼저 있는지부터 물어보세요.']));
+      kids.push(checkCta(display, false));
       kids.push(questionBlock(display));
       kids.push(riskBlock(q));
       kids.push(evidenceBlock(rows));
-      kids.push(actions(display, true, { copy: function () { return copyText(display, 'none', ['없는 단어라는 증명은 아님', ask], rows); } }));
+      kids.push(actions(display, false, { copy: function () { return copyText(display, 'none', ['없는 단어라는 증명은 아님', ask], rows); } }));
       kids.push(paperDetail(q, display));
       return h('article', { class: 'entry s-bad' }, kids);
     }
@@ -976,6 +995,78 @@
     }, 160);
   }
 
+  // 물어본 말이 실제로 쓰이는지(사전·블로그·카페)와 AI 답의 유형(A~E)을 합쳐 결론 한 줄을 만든다.
+  // 논문이 본 경우는 "없는 말 × 뜻을 단정한 답"이다.
+  var verdictSeq = 0;
+  var EXIST = {
+    fake: { label: '논문에서 만든 가짜 말', group: 'none' },
+    none: { label: '쓰인 흔적 없음 (우리말샘·네이버 블로그·카페)', group: 'none' },
+    rare: { label: '드물게 쓰여요', group: 'rare' },
+    wide: { label: '널리 쓰여요 (네이버 블로그·카페)', group: 'used' },
+    some: { label: '일부에서 쓰여요 (네이버 블로그·카페)', group: 'used' },
+    dict: { label: '국립국어원 우리말샘에 있음', group: 'used' },
+    paper: { label: '우리말샘 등재 확인 (논문 대조군)', group: 'used' },
+    app: { label: '이 앱이 정리한 신조어', group: 'used' },
+    unknown: { label: '확인하지 못함', group: 'unknown' }
+  };
+  function verdictText(ex, code, word) {
+    var g = EXIST[ex].group;
+    if (g === 'none') {
+      if (code === 'E') return ex === 'fake' ? '없는 말인데 AI가 뜻을 단정했어요. 이 답의 뜻은 지어낸 것이에요.' : '확인되지 않은 말인데 AI가 뜻을 단정했어요. 논문에서 본 바로 그 경우(없는 말에 뜻 지어내기)예요. 이 뜻은 믿지 마세요.';
+      if (code === 'D') return ex === 'fake' ? '없는 말이라, AI가 추측한 뜻도 실제 뜻이 아니에요.' : '확인되지 않은 말이라, AI가 추측한 뜻도 실제 뜻이라고 볼 수 없어요.';
+      if (code === 'A' || code === 'C') return (ex === 'fake' ? '없는 말이니' : '확인되지 않은 말에') + ' AI가 모른다고 하거나 되물었어요. 논문이 바란 정직한 답이에요.';
+      if (code === 'B') return 'AI가 다른 말로 보고 설명했어요. 물어본 말 자체는 ' + (ex === 'fake' ? '없는 말이에요.' : '쓰인 흔적이 없어요.');
+      return (ex === 'fake' ? '없는 말이에요.' : '쓰인 흔적이 없는 말이에요.') + ' AI 답에 뜻 설명이 있다면 믿기 전에 의심해 보세요.';
+    }
+    if (g === 'rare') return code === 'E' ? '드물게만 쓰이는 말인데 AI가 확인 없이 뜻을 단정했어요. 실제로 쓰인 글과 뜻이 같은지 꼭 비교해 보세요.' : '드물게만 쓰이는 말이에요. 실제로 쓰인 글을 보고 뜻을 판단해 보세요.';
+    if (g === 'used') {
+      var cmp = (ex === 'dict' || ex === 'paper') ? '사전 뜻' : ex === 'app' ? '이 앱에 정리된 뜻' : '실제로 쓰인 글';
+      if (code === 'E' || code === 'U') return '실제로 쓰이는 말이에요. AI가 말한 뜻이 맞는지는 ' + cmp + '과 비교해 보세요.';
+      if (code === 'B') return '실제로 쓰이는 말인데 AI는 다른 말로 봤어요. ' + cmp + '을 확인해 보세요.';
+      return '실제로 쓰이는 말인데 AI가 확실히 답하지 못했어요. ' + cmp + '을 확인해 보세요.';
+    }
+    return '이 말이 실제로 쓰이는지 지금 확인하지 못했어요. 결과가 없다는 뜻은 아니에요.';
+  }
+  function usageVerdict(word, r) {
+    var mySeq = ++verdictSeq;
+    var line = { text: '' };
+    var box = h('section', { class: 'usage-verdict v-wait', 'aria-live': 'polite' });
+    box._line = line;
+    var wq = L.normalize(word);
+    if (!wq) {
+      box.className = 'usage-verdict v-none-word';
+      box.appendChild(h('p', { class: 'src', text: '“물어본 말” 칸에 낱말을 넣으면, 그 말이 실제로 쓰이는지도 확인해 AI 답과 합친 결론을 알려 드려요.' }));
+      return box;
+    }
+    function fill(ex, extra) {
+      if (mySeq !== verdictSeq) return; // 그사이 다른 답을 분석했으면 무시
+      var g = EXIST[ex].group, txt = verdictText(ex, r.code, word);
+      line.text = '“' + word + '” ' + EXIST[ex].label + ' · ' + txt;
+      var bad = g === 'none' && (r.code === 'E' || r.code === 'D' || r.code === 'U');
+      box.className = 'usage-verdict ' + (bad ? 'v-bad' : g === 'none' || g === 'used' ? 'v-ok' : 'v-warn');
+      box.textContent = '';
+      box.appendChild(h('p', { class: 'uv-k', text: '물어본 말 + AI 답 종합' }));
+      box.appendChild(h('p', { class: 'uv-ex' }, [h('b', { text: '“' + word + '”' }), ' · ' + EXIST[ex].label]));
+      box.appendChild(h('p', { class: 'uv-t', text: txt }));
+      if (extra) box.appendChild(extra);
+      box.appendChild(h('button', { class: 'ghost small', type: 'button', text: g === 'unknown' ? '말 찾기에서 다시 확인하기' : '말 찾기에서 근거 보기', onclick: function () { selectTab('find'); markNav('find'); runFind(word); } }));
+    }
+    var s = L.search(word, WORDS), fake = L.findFake(wq, FAKES);
+    if (fake) { fill('fake', fake.made ? h('p', { class: 'src', text: '만든 사람이 정한 뜻: ' + fake.made + ' (AI에게는 알려 주지 않았어요)' }) : null); return box; }
+    if (s.status === 'found') { fill(s.entry.src === 'paper' ? 'paper' : 'app', h('p', { class: 'src', text: '이 앱의 뜻: ' + s.entry.m })); return box; }
+    box.appendChild(h('p', { class: 'uv-k', text: '물어본 말 + AI 답 종합' }));
+    box.appendChild(h('p', { class: 'uv-t', text: '“' + word + '”이(가) 실제로 쓰이는지 우리말샘과 네이버 블로그·카페에서 확인하고 있어요…' }));
+    fetchLookup(word, function (o) {
+      var st = o.r.state;
+      var ex = st === 'dict' ? 'dict' : st === 'used' ? (o.r.spread === 'wide' ? 'wide' : 'some') : st === 'rare' ? 'rare' : st === 'none' ? 'none' : 'unknown';
+      var extra = null;
+      if (ex === 'dict' && o.r.dict && o.r.dict.senses[0]) extra = h('p', { class: 'src', text: '우리말샘 뜻: ' + o.r.dict.senses[0].def });
+      else if ((ex === 'wide' || ex === 'some' || ex === 'rare') && o.r.web) extra = h('p', { class: 'src', text: usageText(o.r.web) });
+      fill(ex, extra);
+    });
+    return box;
+  }
+
   function renderCheck() {
     checkOut.textContent = '';
     var word = L.extractWord($('cw').value || '').trim();
@@ -1019,20 +1110,9 @@
     if (r.code === 'E' || r.code === 'U' || r.code === 'D') {
       kids.push(h('p', { class: 'src', text: r.hasSource ? '답변에 출처로 보이는 말이 있어요. 그 출처를 직접 열어 확인해 보세요.' : '답변에 사전이나 기사 같은 출처가 없어요.' }));
     }
-    var wq = L.normalize(word);
-    if (wq) {
-      var s = L.search(word, WORDS), fake = L.findFake(wq, FAKES), cmp = null;
-      if (s.status === 'found') cmp = h('div', { class: 'block' }, [h('h3', { text: '사전에서 찾은 “' + s.entry.w + '”' }), h('p', { text: s.entry.m }), h('p', { class: 'src', text: 'AI 답과 뜻이 같은지 비교해 보세요.' })]);
-      else if (fake) {
-        cmp = h('div', { class: 'block' }, [h('h3', { text: '“' + fake.w + '”은(는) 논문에서 만든 가짜 말이에요' }),
-          h('p', { text: (r.code === 'E' || r.code === 'U') ? '없는 말인데 AI가 뜻을 단정했어요. 이 답의 뜻은 지어낸 것이에요.' : r.code === 'D' ? '없는 말이라, AI가 추측한 뜻도 실제 뜻이 아니에요.' : '없는 말이니, AI가 정직하게 답한 거예요.' })]);
-      } else if (s.status === 'notfound') {
-        cmp = h('div', { class: 'block' }, [h('h3', { text: '“' + word + '”은(는) 이 앱 사전에 없어요' }),
-          h('p', { text: '실제로 쓰이는 말인지 확인해 보면 AI 답을 믿어도 될지 판단하기 쉬워요.' }),
-          h('button', { class: 'ghost small', type: 'button', text: '실제 쓰임 확인하기', onclick: function () { selectTab('find'); runFind(word); } })]);
-      }
-      if (cmp) kids.push(cmp);
-    }
+    var verdictBox = usageVerdict(word, r);
+    var verdictLine = { text: '' };
+    if (verdictBox) { verdictLine = verdictBox._line; kids.splice(1, 0, verdictBox); }
     // 자세한 분석·주의 사항·답 전체 표시는 한곳에 접어 둔다 (내용은 그대로)
     kids.push(h('details', { class: 'why check-more' }, [
       h('summary', { text: '자세히 보기 · 분석 설명, 주의 사항, 답 전체 표시' }),
@@ -1059,7 +1139,7 @@
         '주의: ' + CAUTION_CHECK[0] + ' ' + CAUTION_CHECK[1],
         '다시 물어보기: ' + sq.step1]).join('\n');
     kids.push(h('div', { class: 'actions' }, [
-      h('button', { class: 'act', type: 'button', text: '분석 결과 복사', onclick: function () { copy(copyBody, '분석 결과를 복사했어요'); } }),
+      h('button', { class: 'act', type: 'button', text: '분석 결과 복사', onclick: function () { copy(copyBody + (verdictLine.text ? '\n종합 판단: ' + verdictLine.text : ''), '분석 결과를 복사했어요'); } }),
       h('button', { class: 'act', type: 'button', text: '다시 분석', onclick: runCheck }),
       h('button', { class: 'act', type: 'button', text: '새로운 답변 분석', onclick: function () { resetCheck(true); } }),
       h('button', { class: 'act', type: 'button', text: '입력 초기화', onclick: function () { resetCheck(false); } }),
