@@ -294,7 +294,7 @@
   }
   function copyText(word, statusKey, lines, rows) {
     var s = STATUS[statusKey];
-    return ['[진짜 있는 말?] “' + word + '” 확인 결과', '상태: ' + s.tag + ' — ' + s.text]
+    return ['[신조어 팩트체크] “' + word + '” 확인 결과', '상태: ' + s.tag + ' — ' + s.text]
       .concat(lines || [])
       .concat(rows && rows.length ? ['확인 근거', evidenceText(rows)] : [])
       .concat(shareUrl(word) ? ['결과 다시 보기: ' + shareUrl(word)] : [])
@@ -316,7 +316,7 @@
       h('button', { class: 'act', type: 'button', text: '결과 지우기', onclick: clearFind }),
       first ? h('a', { class: 'act', href: first, target: '_blank', rel: 'noopener', text: '출처 바로가기 ↗' }) : null,
       withCheck ? h('button', { class: 'link', type: 'button', text: '받은 AI 답 점검하기', onclick: function () { $('cw').value = display; updateCheckUi(); selectTab('check', true); $('ca').focus(); } }) : null,
-      h('button', { class: 'link', type: 'button', text: '이 결과 공유하기', onclick: function () { shareLink({ q: display }, display + ' · 진짜 있는 말?'); } }),
+      h('button', { class: 'link', type: 'button', text: '이 결과 공유하기', onclick: function () { shareLink({ q: display }, display + ' · 신조어 팩트체크'); } }),
       CONFIG.reportUrl && safeLink(CONFIG.reportUrl) ? h('a', { class: 'link', href: CONFIG.reportUrl, target: '_blank', rel: 'noopener', text: '빠진 말 알려 주기' }) : null
     ]);
   }
@@ -932,7 +932,7 @@
       scoreText() ? h('p', { class: 'src', text: scoreText() }) : null
     ]));
     // 5. 다시 분석 · 결과 복사 (요구서 4-3)
-    var copyBody = ['[진짜 있는 말?] AI 답 점검 결과' + (word ? ' · 물어본 말 “' + word + '”' : ''),
+    var copyBody = ['[신조어 팩트체크] AI 답 점검 결과' + (word ? ' · 물어본 말 “' + word + '”' : ''),
       '답변 유형: ' + CODE_NAME[r.code] + ' — ' + v.title,
       '판단 근거(실제 답변 문장):'].concat(quotes.length ? quotes.map(function (q) { return '  “' + q.plain + '”'; }) : ['  판단에 쓸 표현 없음'])
       .concat(['분석 설명:'], points.map(function (t) { return '  - ' + t; }), [

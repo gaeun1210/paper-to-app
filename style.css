@@ -945,3 +945,8 @@ a { color: var(--brand); }
 @media (max-width: 700px) { .chos { grid-template-columns: repeat(7, minmax(0, 1fr)); max-width: 420px; margin-left: auto; margin-right: auto; } }
 .small-pill input[type=search] { flex: 1 1 0; width: 0; }
 .home { grid-template-columns: minmax(0, 1fr); }
+
+/* ── 8차: 사이트 이름 '신조어 팩트체크' 로고 (한글 + 영문 두 줄) ── */
+.logo-t { display: inline-flex; flex-direction: column; line-height: 1.1; }
+.logo-ko { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
+.logo-en { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; color: var(--brand); }

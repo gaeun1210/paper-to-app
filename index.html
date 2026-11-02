@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>진짜 있는 말? · 정직한 신조어 해석기</title>
+<title>신조어 팩트체크 · 이 신조어, 진짜야?</title>
 <meta name="description" content="모르는 신조어를 AI에게 묻기 전에, 그 말이 진짜 쓰이는지부터 확인해 주는 해석기. 쓰이는 말이면 뜻과 출처를, 흔적이 없으면 AI에게 안전하게 묻는 법을 알려 줍니다.">
 <meta name="theme-color" content="#1D5BEA">
 <link rel="manifest" href="manifest.webmanifest">
@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <!-- 링크 공유 미리보기. 공개 주소가 생기면 og:image 를 그 주소로 바꿔 주세요 (README 참고) -->
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="진짜 있는 말?">
-<meta property="og:title" content="진짜 있는 말? · 정직한 신조어 해석기">
+<meta property="og:site_name" content="신조어 팩트체크">
+<meta property="og:title" content="신조어 팩트체크 · 이 신조어, 진짜야?">
 <meta property="og:description" content="모르는 신조어, AI에게 묻기 전에 진짜 쓰이는 말인지부터 확인하세요.">
 <meta property="og:image" content="https://paper-to-app.vercel.app/og.png">
 <meta property="og:image:width" content="1200">
@@ -28,7 +28,7 @@
 <a class="skip" href="#main">본문으로 건너뛰기</a>
 <header class="topbar">
   <div class="wrap topbar-in">
-    <a class="logo" href="./" aria-label="진짜 있는 말? 처음 화면"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span>진짜 있는 말?</span></a>
+    <a class="logo" href="./" aria-label="신조어 팩트체크 처음 화면"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="logo-t"><span class="logo-ko">신조어 팩트체크</span><span class="logo-en">NEW WORD FACT CHECK</span></span></a>
     <button type="button" class="menu-btn" id="menu-btn" aria-expanded="false" aria-controls="nav" aria-label="메뉴 열기"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     <nav id="nav" class="nav" aria-label="주요 메뉴">
       <ul>
@@ -46,7 +46,7 @@
 
 <section class="hero" id="top">
   <div class="wrap hero-in">
-    <h1 class="brand">진짜 <span class="hl">있는 말?</span></h1>
+    <h1 class="brand">이 신조어, <span class="hl">진짜야?</span></h1>
     <p class="tagline">AI가 대답한 말, 정말 있는 말인지 확인해 보세요!</p>
     <p class="lead">이 앱은 모르는 신조어를 만난 사람이 AI가 지어낸 뜻에 속지 않게, <strong>그 말이 진짜 쓰이는지부터</strong> 확인해 줍니다.</p>
     <form id="find-form" class="field search-pill" autocomplete="off" novalidate role="search">
@@ -54,7 +54,7 @@
         <label for="q" class="visually-hidden">찾을 말</label>
         <span class="sp-ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></span>
         <input id="q" name="q" type="search" inputmode="search" enterkeyhint="search" maxlength="200"
-               placeholder="궁금한 말을 입력해 보세요 (예: 얼죽아)" role="combobox" aria-autocomplete="list"
+               placeholder="궁금한 신조어를 입력해 보세요" role="combobox" aria-autocomplete="list"
                aria-expanded="false" aria-controls="ac">
         <ul id="ac" class="ac" role="listbox" aria-label="추천하는 말" hidden></ul>
       </div>
