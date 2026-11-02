@@ -4,5 +4,5 @@ window.APP_CONFIG = {
   // 폼에는 이름·연락처 칸을 두지 마세요.
   reportUrl: '',
   // 논문 원문 주소. 공개된 주소가 있을 때만 넣으세요. 비워 두면 "논문 원문 보기" 링크가 나타나지 않아요.
-  paperUrl: ''
+  paperUrl: 'https://about-me-story.vercel.app/paper.pdf'
 };
