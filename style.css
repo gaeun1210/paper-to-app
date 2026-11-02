@@ -1096,3 +1096,6 @@ body[data-tab="check"] .hero .try, body[data-tab="quiz"] .hero .try { display: n
 .sp-t span { font-size: 12px; color: var(--muted); }
 .share-url { width: 100%; min-height: var(--tap); font: inherit; font-size: 14px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); margin-bottom: 8px; }
 .share-modal .src { margin: 0 0 14px; }
+
+/* hidden 속성은 언제나 숨김 (display 규칙이 덮어쓰지 않게) */
+[hidden] { display: none !important; }
