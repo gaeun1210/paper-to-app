@@ -1088,3 +1088,11 @@ body[data-tab="check"] .hero .try, body[data-tab="quiz"] .hero .try { display: n
 .wd-note { margin: 6px 0; font-size: 14px; color: var(--warn); }
 .wd-act { margin-top: 10px; gap: 12px; align-items: center; }
 @media (prefers-reduced-motion: no-preference) { .word-detail { animation: rise .25s ease-out both; } }
+
+/* 15차: 공유 창 (기기 공유가 없는 브라우저용) */
+.share-prev { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 6px 0 12px; background: var(--paper); }
+.share-prev img { display: block; width: 100%; height: auto; }
+.sp-t { display: grid; gap: 2px; padding: 10px 12px; font-size: 14px; }
+.sp-t span { font-size: 12px; color: var(--muted); }
+.share-url { width: 100%; min-height: var(--tap); font: inherit; font-size: 14px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); margin-bottom: 8px; }
+.share-modal .src { margin: 0 0 14px; }

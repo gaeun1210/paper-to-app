@@ -42,7 +42,32 @@
     var base = location.protocol === 'file:' ? location.href.split('?')[0] : location.origin + location.pathname;
     var url = base + '?' + new URLSearchParams(params).toString();
     if (navigator.share) navigator.share({ title: title, url: url }).catch(function () {});
-    else copy(url, '링크를 복사했어요');
+    else openShareBox(url, title);
+  }
+  // 기기 공유 창이 없는 브라우저(카카오톡 안 브라우저 등): 보낼 링크와 미리보기 모습을 보여 주고 복사하게 한다
+  function openShareBox(url, title) {
+    var old = $('share-box'); if (old) old.remove();
+    var input = h('input', { type: 'text', readonly: '', class: 'share-url', 'aria-label': '공유할 링크' });
+    var shown = url; try { shown = decodeURI(url); } catch (e) { /* 그대로 */ }
+    input.value = shown;
+    var close = function () { if (d.open && d.close) d.close(); d.remove(); };
+    var d = h('dialog', { id: 'share-box', class: 'modal share-modal', 'aria-labelledby': 'share-h' }, [
+      h('h3', { id: 'share-h', text: '이 결과 공유하기' }),
+      h('div', { class: 'share-prev', 'aria-hidden': 'true' }, [
+        h('img', { src: 'og.png', alt: '', width: '1200', height: '630' }),
+        h('div', { class: 'sp-t' }, [h('b', { text: '신조어 팩트체크 · 이 신조어, 진짜야?' }), h('span', { text: 'paper-to-app.vercel.app' })])
+      ]),
+      input,
+      h('p', { class: 'src', text: '링크를 복사해 카카오톡 같은 대화창에 붙여 넣으면, 위와 같은 미리보기 그림이 함께 보여요. 받은 사람이 링크를 열면 “' + (title || '').replace(/ · 신조어 팩트체크$/, '') + '” 결과가 바로 열려요.' }),
+      h('div', { class: 'row modal-actions' }, [
+        h('button', { class: 'ghost', type: 'button', text: '닫기', onclick: close }),
+        h('button', { class: 'primary', type: 'button', text: '링크 복사', onclick: function () { copy(url, '링크를 복사했어요. 대화창에 붙여 넣어 보내세요'); close(); } })
+      ])
+    ]);
+    d.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
+    document.body.appendChild(d);
+    if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+    input.addEventListener('focus', function () { input.select(); });
   }
   function setUrl(params) {
     try {
@@ -1229,22 +1254,45 @@
     var help = $('install-help'), btn = $('install');
     if (!help.hidden) { help.hidden = true; btn.setAttribute('aria-expanded', 'false'); return; }
     help.textContent = '';
-    var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (ios) {
+    var ua = navigator.userAgent || '';
+    var ios = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var standalone = false; try { standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) {}
+    var inApp = /KAKAOTALK/i.test(ua) ? '카카오톡' : /NAVER\(inapp|NAVER/.test(ua) ? '네이버 앱' : /Instagram/i.test(ua) ? '인스타그램' : /FBAN|FBAV/.test(ua) ? '페이스북' : /Line\//.test(ua) ? '라인' : '';
+    var samsung = /SamsungBrowser/i.test(ua);
+    var MENU3 = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg>';
+    if (standalone) {
+      help.appendChild(h('p', { class: 'ih', text: '이미 홈 화면 앱으로 열려 있어요' }));
+      help.appendChild(h('p', { class: 'src', text: '지금 화면이 홈 화면에 추가한 아이콘으로 연 앱이에요. 따로 추가하지 않아도 돼요.' }));
+    } else if (inApp) {
+      help.appendChild(h('p', { class: 'ih', text: inApp + ' 안에서 열었어요' }));
+      help.appendChild(h('ol', { class: 'steps' }, [
+        step(1, ICON.menu, inApp + ' 화면의 메뉴(점 세 개, 보통 오른쪽 위나 아래)를 눌러요.'),
+        step(2, ICON.share, '“다른 브라우저로 열기”(아이폰은 “사파리로 열기”)를 눌러요.'),
+        step(3, ICON.add, '열린 브라우저에서 이 버튼을 다시 누르면 추가 방법이 나와요.')
+      ]));
+      help.appendChild(h('p', { class: 'src', text: inApp + ' 안의 브라우저에서는 홈 화면에 추가할 수 없어요.' }));
+    } else if (ios) {
       help.appendChild(h('p', { class: 'ih', text: '아이폰·아이패드 (사파리)' }));
       help.appendChild(h('ol', { class: 'steps' }, [
         step(1, ICON.share, '화면 아래쪽 가운데 공유 버튼을 눌러요.'),
         step(2, ICON.add, '목록을 조금 올려 “홈 화면에 추가”를 눌러요.'),
         step(3, ICON.check, '오른쪽 위 “추가”를 누르면 홈 화면에 아이콘이 생겨요.')
       ]));
-      help.appendChild(h('p', { class: 'src', text: '카카오톡 안에서 열었다면, 오른쪽 아래 메뉴에서 “사파리로 열기”를 먼저 눌러 주세요.' }));
+    } else if (samsung) {
+      help.appendChild(h('p', { class: 'ih', text: '삼성 인터넷' }));
+      help.appendChild(h('ol', { class: 'steps' }, [
+        step(1, MENU3, '화면 아래쪽 오른쪽 메뉴(줄 세 개)를 눌러요. 아래 막대가 안 보이면 화면을 살짝 위로 올려 보세요.'),
+        step(2, ICON.add, '“현재 페이지 추가”를 누른 뒤 “홈 화면”을 골라요.'),
+        step(3, ICON.check, '“추가”를 누르면 홈 화면에 아이콘이 생겨요.')
+      ]));
     } else {
       help.appendChild(h('p', { class: 'ih', text: '안드로이드 휴대폰·PC (크롬)' }));
       help.appendChild(h('ol', { class: 'steps' }, [
-        step(1, ICON.menu, '오른쪽 위 점 세 개 메뉴를 눌러요.'),
+        step(1, ICON.menu, '주소창 오른쪽 점 세 개 메뉴를 눌러요. 주소창이 안 보이면 화면을 살짝 아래로 내려 보세요.'),
         step(2, ICON.add, '“홈 화면에 추가” 또는 “앱 설치”를 눌러요.'),
         step(3, ICON.check, '“추가” 또는 “설치”를 누르면 아이콘이 생겨요.')
       ]));
+      help.appendChild(h('p', { class: 'src', text: '메뉴 위치는 브라우저마다 달라요. 삼성 인터넷은 화면 아래쪽 메뉴(줄 세 개) → “현재 페이지 추가” → “홈 화면”이에요.' }));
     }
     help.hidden = false; btn.setAttribute('aria-expanded', 'true');
   });
