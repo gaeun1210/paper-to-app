@@ -533,10 +533,20 @@
       var r = o.r;
       if (r.state === 'unknown') r.why = WHY[r.kind] || WHY.error;
       holder.replaceWith(lookupCard(r, q, display, o.data));
+      revealResult();
     });
   }
 
   function showHome(on) { $('home').hidden = !on; }
+  // 결과가 화면 밖(기능 카드 아래)에 나오면 결과 쪽으로 내려간다
+  function revealResult() {
+    var el = findOut; if (!el || !el.firstChild) return;
+    var r = el.getBoundingClientRect(), vh = window.innerHeight || 800;
+    if (r.top > vh * 0.45 || r.top < 0) {
+      var reduce = false; try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* 무시 */ }
+      el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    }
+  }
 
   function runFind(raw) {
     closeAc();
@@ -589,6 +599,7 @@
         setUrl({ q: word });
         saveRecent(word);
     }
+    revealResult();
     // 결과 아래에 처음 화면으로 돌아가는 길
     findOut.appendChild(h('p', { class: 'back' }, [h('button', { class: 'link', type: 'button', text: '다른 말 둘러보기', onclick: clearFind })]));
   }
@@ -597,7 +608,7 @@
     e.preventDefault();
     if (acIndex >= 0 && acItems[acIndex]) runFind(acItems[acIndex].w); else runFind();
   });
-  Array.prototype.forEach.call(document.querySelectorAll('.chip[data-q]'), function (b) {
+  Array.prototype.forEach.call(document.querySelectorAll('.chip[data-q], .demo[data-q]'), function (b) {
     b.addEventListener('click', function () { runFind(b.getAttribute('data-q')); });
   });
 
@@ -657,7 +668,7 @@
       // 말 + 뜻 한 줄을 담은 작은 카드 (누르면 위 결과 칸에 뜻·근거가 열림)
       box.appendChild(h('button', { class: 'chip word-card' + (w.note ? ' caution-chip' : ''), type: 'button',
         'aria-label': w.w + (w.note ? ' (' + w.note + ')' : '') + ' — ' + w.m + '. 눌러서 뜻과 근거 보기',
-        onclick: function () { runFind(w.w); $('q').scrollIntoView({ block: 'center', behavior: 'smooth' }); } }, [
+        onclick: function () { runFind(w.w); } }, [
           h('span', { class: 'wc-w', text: w.w }), h('span', { class: 'wc-m', text: w.m })
         ]));
     });
