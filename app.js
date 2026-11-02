@@ -859,7 +859,7 @@
 
   function scoreText() {
     if (!SCORE || !SCORE.n) return '';
-    return '논문 응답 ' + SCORE.n + '건으로 채점해 보니, “뜻을 단정했는가” 판정이 연구자 분류와 ' + (SCORE.e * 100).toFixed(1) + '% 일치했어요(카파 ' + SCORE.kappa + ').';
+    return '정확도: 논문 실험의 실제 AI 답 ' + SCORE.n + '건(' + SCORE.set + ', 규칙을 다듬는 데 쓰지 않은 자료)으로 채점하니, “뜻을 단정했는가(E)” 판정이 논문 연구자 분류와 ' + (SCORE.e * 100).toFixed(1) + '% 일치했어요(카파 ' + SCORE.kappa + '). A~E 다섯 갈래 전체는 ' + Math.round(SCORE.five * 100) + '% 일치라, E인지 아닌지를 중심으로 보세요.';
   }
 
   // 판단 근거: 분류에 쓰인 실제 표현 (요구서 4-2). Logic.checkAnswer 가 돌려준 hits 를 그대로 쓴다.
