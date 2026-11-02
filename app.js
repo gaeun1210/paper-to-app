@@ -454,34 +454,43 @@
     var links = rows.reduce(function (a, x) { return a.concat(x.links.map(function (l) { return l.url; })); }, []);
     var ask = 'AI에게 묻는다면: ' + L.safeQuestion(display).step1;
     if (r.state === 'dict') {
-      kids.push(verdict('사전에\n있음', 'ok', display, '국립국어원 우리말샘에 실린 말이에요.'));
-      kids.push(statusLine('dict', web && web.count ? '온라인 글에서도 쓰였어요.' : ''));
-      kids.push(h('ol', { class: 'senses' }, r.dict.senses.map(function (s) {
+      // 사전에 실린 말은 짧게: 이 앱의 중심은 사전에 없는 말이다
+      var s0 = r.dict.senses[0], more = r.dict.senses.slice(1);
+      var tags = [];
+      if (s0 && s0.type && s0.type !== '일반어') tags.push(h('span', { class: 'badge', text: s0.type }));
+      var senseItem = function (s) {
         var link = safeLink(s.link);
-        return h('li', null, [
-          s.pos ? h('span', { class: 'badge', text: s.pos }) : null, ' ', s.def, ' ',
-          link ? h('a', { href: link, target: '_blank', rel: 'noopener', class: 'src-link', text: '우리말샘에서 보기' }) : null
-        ]);
-      })));
-      if (web && web.count) kids.push(h('p', { class: 'src', text: '네이버 블로그·카페 글 ' + web.count + '건에서도 이 말이 쓰였어요.' }));
-      kids.push(h('div', { class: 'meta' }, [h('span', { class: 'badge ok', text: '출처: 우리말샘' }), h('span', { class: 'badge', text: '확인일 ' + (r.checkedAt || '') })]));
-      kids.push(evidenceBlock(rows));
-      kids.push(actions(display, false, { links: links, copy: function () { return copyText(display, 'dict', r.dict.senses.map(function (s, i) { return '뜻 ' + (i + 1) + ': ' + s.def; }), rows); } }));
-      return h('article', { class: 'entry s-ok' }, kids);
+        return [s.pos ? h('span', { class: 'badge', text: s.pos }) : null, ' ', s.def, ' ', link ? h('a', { href: link, target: '_blank', rel: 'noopener', class: 'src-link', text: '우리말샘에서 보기' }) : null];
+      };
+      kids.push(verdict('사전에\n있음', 'ok', display, '국립국어원 우리말샘에 실린 말이에요.' + (s0 && s0.cat ? ' 전문 분야(' + s0.cat + ')의 용어로 실려 있어요.' : '')));
+      kids.push(statusLine('dict', web && web.count ? '온라인 글에서도 쓰였어요.' : ''));
+      if (tags.length) kids.push(h('div', { class: 'meta' }, tags));
+      if (s0) kids.push(h('p', { class: 'mean dict-mean' }, senseItem(s0)));
+      if (more.length) kids.push(h('details', { class: 'more-senses' }, [h('summary', { text: '다른 뜻 ' + more.length + '개 보기' }), h('ol', { class: 'senses', start: '2' }, more.map(function (s) { return h('li', null, senseItem(s)); }))]));
+      kids.push(h('p', { class: 'note-honest' }, ['이 앱은 ', h('b', { text: '사전에 없는 신조어' }), '를 확인하는 데 집중해요. 사전에 실린 말은 뜻만 간단히 보여 드려요.']));
+      kids.push(h('details', { class: 'ev-fold' }, [h('summary', { text: '확인 근거 보기' }), evidenceBlock(rows)]));
+      kids.push(actions(display, false, { links: links, copy: function () { return copyText(display, 'dict', r.dict.senses.map(function (s, i) { return '뜻 ' + (i + 1) + ': ' + s.def; }).concat(s0 && s0.cat ? ['전문 분야: ' + s0.cat] : []), rows); } }));
+      return h('article', { class: 'entry s-ok entry-dict' }, kids);
     }
     if (r.state === 'used') {
-      kids.push(verdict('실제로\n쓰여요', 'ok', display, '이 앱 사전' + (r.dictChecked ? '과 우리말샘' : '') + '에는 없지만, 네이버 블로그·카페 글 ' + web.count + '건에서 이 말이 그대로 쓰였어요.'));
+      var wide = r.spread === 'wide', where = '이 앱 사전' + (r.dictChecked ? '과 우리말샘' : '') + '에는 없지만, ';
+      var hasSrc = web.sources !== null && web.sources !== undefined;
+      kids.push(verdict(wide ? '널리\n쓰여요' : '일부에서\n쓰여요', 'ok', display, wide
+        ? where + (hasSrc ? '서로 다른 블로그·카페 ' + web.sources + '곳의 글 ' + web.count + '건' : '네이버 블로그·카페 글 ' + web.count + '건') + '에서 이 말이 그대로 쓰였어요.'
+        : where + '네이버 블로그·카페 글 ' + web.count + '건에서 쓰였어요.' + (hasSrc ? ' 쓴 곳은 ' + web.sources + '곳이에요.' : '') + ' 특정 모임이나 팬덤 안에서만 쓰는 말일 수 있어요.'));
       kids.push(statusLine('used', '공식적인 단어라거나 널리 통하는 표현이라는 뜻은 아니에요.'));
+      kids.push(usageInfo(web, true));
       kids.push(h('p', { class: 'note-honest' }, ['이 앱은 사전에 없는 뜻을 지어내지 않아요. ', h('b', { text: '아래 글에서 어떻게 쓰였는지' }), ' 보고 뜻을 확인해 보세요.']));
       kids.push(samplesBlock(web, display));
       kids.push(questionBlock(display, 'AI에게 뜻을 물어본다면'));
       kids.push(evidenceBlock(rows));
-      kids.push(actions(display, true, { links: links, copy: function () { return copyText(display, 'used', [ask], rows); } }));
+      kids.push(actions(display, true, { links: links, copy: function () { return copyText(display, 'used', [(wide ? '널리 쓰여요' : '일부에서 쓰여요') + ' · ' + usageText(web), ask], rows); } }));
       return h('article', { class: 'entry s-ok' }, kids);
     }
     if (r.state === 'rare') {
       kids.push(verdict('드물게\n쓰여요', 'warn', display, '네이버 블로그·카페 글 ' + web.count + '건에서만 이 말을 찾았어요. 아주 새로 생겼거나 일부에서만 쓰는 말일 수 있어요.'));
       kids.push(statusLine('more', '사용 흔적은 ' + web.count + '건뿐이에요.'));
+      kids.push(usageInfo(web, false));
       kids.push(samplesBlock(web, display));
       kids.push(questionBlock(display));
       kids.push(riskBlock(q));
@@ -522,6 +531,22 @@
     kids.push(actions(display, true, { links: links, copy: function () { return copyText(display, statusKey, [r.why || '', ask], rows); } }));
     kids.push(paperDetail(q, display));
     return h('article', { class: 'entry s-wait' }, kids);
+  }
+
+  // 쓰임 정보 한 줄: 검색 결과에 실제로 있는 값만 (글 수 · 서로 다른 곳 · 블로그/카페 · 블로그 글 날짜)
+  function usageText(web) {
+    var parts = ['찾은 글 ' + web.count + '건'];
+    if (web.sources !== null && web.sources !== undefined) parts.push('서로 다른 블로그·카페 ' + web.sources + '곳');
+    if (typeof web.blogs === 'number') parts.push('블로그 ' + web.blogs + ' · 카페 ' + web.cafes);
+    if (web.firstDate) parts.push('블로그 글 날짜 ' + (web.firstDate === web.lastDate ? web.firstDate : web.firstDate + ' ~ ' + web.lastDate));
+    return parts.join(' · ');
+  }
+  function usageInfo(web, withRule) {
+    var S = L.SPREAD || { wideCount: 20, wideSources: 10 };
+    return h('div', { class: 'usage' }, [
+      h('p', { class: 'usage-line' }, [h('b', { text: '쓰임 정보 ' }), usageText(web)]),
+      withRule ? h('p', { class: 'src', text: '“널리 쓰여요”는 글 ' + S.wideCount + '건 이상, 서로 다른 블로그·카페 ' + S.wideSources + '곳 이상에서 쓰였을 때예요(논문이 아닌 이 앱의 기준). 검색 결과는 블로그·카페 각각 최대 100건까지만 살펴봐요.' }) : null
+    ]);
   }
 
   var WHY = {

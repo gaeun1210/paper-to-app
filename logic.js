@@ -210,7 +210,7 @@
     var d = data.dict || {}, w = data.web || {};
     var dictOk = d.status === 'ok', webOk = w.status === 'ok';
     if (dictOk && d.found) return { state: 'dict', dict: d, web: webOk ? w : null };
-    if (webOk && w.level === 'used') return { state: 'used', web: w, dictChecked: dictOk };
+    if (webOk && w.level === 'used') return { state: 'used', web: w, dictChecked: dictOk, spread: usageSpread(w) };
     if (webOk && w.level === 'rare') return { state: 'rare', web: w, dictChecked: dictOk };
     if (webOk && w.level === 'none') {
       // 검색 실패와 결과 없음을 구분한다: 한쪽 자료라도 확인하지 못했으면 "흔적 없음"이라 하지 않는다
@@ -224,6 +224,14 @@
     // 키가 아직 없음(off) / 연결 실패(error)를 나눠 안내 문구를 다르게 한다
     var off = d.status === 'off' && (w.status === 'off' || !w.status);
     return { state: 'unknown', off: off };
+  }
+
+  // 사전에 없지만 쓰이는 말을 "널리 쓰여요 / 일부에서 쓰여요"로 나누는 기준 (논문이 아니라 이 앱이 정한 기준)
+  var SPREAD = { wideCount: 20, wideSources: 10 };
+  function usageSpread(w) {
+    if (!w || !(w.count >= SPREAD.wideCount)) return 'some';
+    if (w.sources === null || w.sources === undefined) return 'wide'; // 곳 수를 모르면 글 수로만 판단
+    return w.sources >= SPREAD.wideSources ? 'wide' : 'some';
   }
 
   // 논문에서 만든 가짜 단어인지 (연구 1·2의 70개)
@@ -334,7 +342,7 @@
   var api = {
     PAPER: PAPER, pct: pct, normalize: normalize, extractWord: extractWord, choseong: choseong,
     search: search, suggest: suggest, classifyShape: classifyShape, safeQuestion: safeQuestion, aiLinks: aiLinks,
-    findFake: findFake, interpretLookup: interpretLookup, checkAnswer: checkAnswer, MAX_LEN: MAX_LEN
+    findFake: findFake, interpretLookup: interpretLookup, usageSpread: usageSpread, SPREAD: SPREAD, checkAnswer: checkAnswer, MAX_LEN: MAX_LEN
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Logic = api;

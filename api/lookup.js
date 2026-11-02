@@ -118,7 +118,9 @@ async function searchNaver(kind, word, id, secret) {
         title: title.slice(0, 80),
         text: snippet(desc.indexOf(word) >= 0 ? desc : title, word),
         link: /^https?:\/\//.test(it.link || '') ? it.link : '',
-        date: /^\d{8}$/.test(it.postdate || '') ? it.postdate.slice(0, 4) + '.' + it.postdate.slice(4, 6) + '.' + it.postdate.slice(6) : ''
+        date: /^\d{8}$/.test(it.postdate || '') ? it.postdate.slice(0, 4) + '.' + it.postdate.slice(4, 6) + '.' + it.postdate.slice(6) : '',
+        // 서로 다른 블로그·카페가 몇 곳인지 세는 데만 쓰고, 응답에는 싣지 않는다
+        src: String((kind === 'blog' ? (it.bloggerlink || it.bloggername) : (it.cafeurl || it.cafename)) || '').trim()
       });
     }
   });
@@ -135,7 +137,17 @@ async function checkWeb(word) {
   var hits = [], checked = 0;
   ok.forEach(function (r) { checked += r.checked; hits = hits.concat(r.hits); });
   var level = hits.length >= USED_MIN ? 'used' : hits.length > 0 ? 'rare' : 'none';
-  return { status: 'ok', partial: ok.length < 2, checked: checked, count: hits.length, level: level, samples: hits.slice(0, 3) };
+  // 쓰임 정보: 서로 다른 곳 수 · 블로그/카페 글 수 · 블로그 글 날짜 범위 (검색 결과에 실제로 있는 값만)
+  var srcs = {}, anySrc = false;
+  hits.forEach(function (h) { if (h.src) { anySrc = true; srcs[(h.kind === '블로그' ? 'b:' : 'c:') + h.src] = 1; } });
+  var dates = hits.map(function (h) { return h.date; }).filter(Boolean).sort();
+  var blogs = hits.filter(function (h) { return h.kind === '블로그'; }).length;
+  return {
+    status: 'ok', partial: ok.length < 2, checked: checked, count: hits.length, level: level,
+    sources: anySrc ? Object.keys(srcs).length : null, blogs: blogs, cafes: hits.length - blogs,
+    firstDate: dates.length ? dates[0].slice(0, 7) : '', lastDate: dates.length ? dates[dates.length - 1].slice(0, 7) : '',
+    samples: hits.slice(0, 3).map(function (h) { return { kind: h.kind, title: h.title, text: h.text, link: h.link, date: h.date }; })
+  };
 }
 
 module.exports = async function handler(req, res) {
