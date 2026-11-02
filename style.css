@@ -1132,3 +1132,19 @@ body[data-tab="check"] .hero .finding, body[data-tab="quiz"] .hero .finding { di
 
 /* 18차: 논문 이야기 맨 위 — 돌아가기 링크 자리에 논문 원문 보기 버튼 */
 .paper-link-row { margin: 14px 0 0; }
+
+/* 19차: AI 지어냄 위험 상자 · AI 종류 고르기 */
+.ai-risk { border-radius: 14px; padding: 14px 18px; margin: 12px 0; border: 1.5px solid var(--line); background: var(--card); }
+.ai-risk p { margin: 0 0 6px; }
+.ai-risk p:last-child { margin-bottom: 0; }
+.ai-risk .ar-k { font-size: 12px; font-weight: 800; color: var(--muted); letter-spacing: .02em; }
+.ai-risk .ar-lv { font-weight: 800; font-size: 15px; }
+.ai-risk .ar-t { font-size: 15.5px; }
+.ai-risk.lv-high { border-color: var(--seal); background: var(--seal-soft); }
+.ai-risk.lv-high .ar-lv { color: var(--seal); }
+.ai-risk.lv-mid { border-color: color-mix(in srgb, var(--warn) 60%, var(--line)); background: var(--warn-soft); }
+.ai-risk.lv-mid .ar-lv { color: var(--warn); }
+.ai-risk.lv-real { border-color: color-mix(in srgb, var(--ok) 50%, var(--line)); background: var(--ok-soft); }
+.usage-verdict .uv-more { font-size: 14.5px; }
+.lbl-sub { margin-top: 12px; font-size: 14px; }
+#cm { min-height: var(--tap); font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); max-width: 260px; width: 100%; }

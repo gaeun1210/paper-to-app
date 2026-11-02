@@ -175,19 +175,29 @@
   }
 
   // 논문에서 시험한 질문 + (고르면) 덧붙이는 문장 + AI 바로 열기
-  function questionBlock(word, title) {
+  // 가짜 줄임말에 대한 AI별 단정 비율 (연구 1 표 6 + 연구 2 표 12, 두 질문 합산)
+  // 말의 모양에 맞는 AI별 비율을 쓴다 (연구 1 표 6 + 연구 2 표 12). 모양을 모르면 가짜 줄임말 기준.
+  function modelRates(word) {
+    var si = word ? shapeOf(L.normalize(word) || word).info : null, src = si || P.abbr, out = {};
+    src.models.forEach(function (m) { out[m.name] = m; });
+    return { rates: out, label: si ? si.label : '줄임말처럼 생긴 말', exact: !!si, study: src.source.split(',')[0] };
+  }
+  var MODEL_RATE = modelRates(null).rates;
+  function questionBlock(word, title, showModels) {
     var withExtra = false;
     var box = h('div', { class: 'qwrap' });
     function paint() {
       var sq = L.safeQuestion(word, withExtra);
       box.textContent = '';
       box.appendChild(qbox('먼저', sq.step1, withExtra ? '앞 문장은 논문에서 시험한 질문, 뒤 문장은 앱이 덧붙인 문장이에요.' : '논문에서 AI가 뜻을 가장 덜 지어낸 질문이에요. 따옴표는 낱말이 조사와 붙어 읽히지 않게 앱이 더했어요.'));
-      var links = L.aiLinks(sq.step1);
+      var links = L.aiLinks(sq.step1), mrInfo = modelRates(word);
       box.appendChild(h('div', { class: 'open-row' }, [h('span', { class: 'open-l', text: '이 질문으로 바로 열기' })].concat(links.map(function (a) {
-        return h('a', { class: 'open-ai', href: a.url, target: '_blank', rel: 'noopener', text: a.name + ' ↗',
+        var mr = showModels && mrInfo.rates[a.name];
+        return h('a', { class: 'open-ai', href: a.url, target: '_blank', rel: 'noopener', text: a.name + ' ↗' + (mr ? ' · 논문 ' + L.pct(mr) + '%' : ''),
           title: a.copy ? '질문을 복사하고 ' + a.name + '를 열어요. 입력 칸에 붙여 넣어 보내세요.' : null,
           onclick: a.copy ? function () { copy(sq.step1, '질문을 복사했어요. ' + a.name + ' 입력 칸에 붙여 넣어 보내세요'); } : null });
-      })).concat(links.some(function (a) { return a.copy; }) ? [h('span', { class: 'open-note', text: 'Gemini는 질문이 복사된 채로 열려요. 입력 칸에 붙여 넣기 한 번이 더 필요해요.' })] : [])));
+      })).concat(links.some(function (a) { return a.copy; }) ? [h('span', { class: 'open-note', text: 'Gemini는 질문이 복사된 채로 열려요. 입력 칸에 붙여 넣기 한 번이 더 필요해요.' })] : [])
+        .concat(showModels ? [h('span', { class: 'open-note', text: '“논문 ○%”는 각 AI가 ' + (mrInfo.exact ? '이런 모양(' + mrInfo.label + ')의' : '가짜 줄임말(이 말은 모양 판정 범위 밖이라 참고값)의') + ' 가짜 말에 뜻을 단정한 비율이에요(' + mrInfo.study + ', 두 질문 합산). 가짜 줄임말도 이 질문(“실제로 있어?”)으로 물으면 세 AI 합산 ' + pctText(HL.confirm) + '로 줄었어요.' })] : [])));
       box.appendChild(qbox('있다고 하면', sq.step2));
     }
     var extra = h('label', { class: 'extra' }, [
@@ -206,19 +216,33 @@
   }
 
   // 생김새에 따른 논문 수치 (세 글자 한글 말일 때만)
-  function riskBlock(q) {
+  // ── AI에게 물으면 뜻을 지어낼 위험 (논문 결과 ① 형성 방식, ⑤ 실제 신조어) ──
+  // kind: none(흔적 없음) · fake(논문 가짜 말) · rare(드묾) · unknown(확인 못 함) · real(쓰이는 말)
+  // 모양별 수치는 논문이 시험한 '한글 세 글자 말'에만 보여 준다.
+  var REAL_N = 120; // 연구 1·2 실제 신조어 대조군 응답 120건 (모두 뜻을 설명, 모른다고 한 답 0건)
+  function riskBox(q, kind) {
+    var head = h('p', { class: 'ar-k', text: 'AI에게 물으면 뜻을 지어낼 위험 · 논문 결과' });
+    if (kind === 'real') {
+      return h('div', { class: 'ai-risk lv-real' }, [head,
+        h('p', { class: 'ar-t' }, ['논문에서 시험한 실제 신조어 20개는 세 AI 모두 뜻을 설명했어요(', h('b', { text: REAL_N + '건 모두' }), ', 모른다고 한 답 0건).']),
+        h('p', { class: 'src', text: '그래서 AI 설명을 참고할 수는 있어요. 다만 논문은 그 뜻이 맞는지는 채점하지 않았으니, 실제로 쓰인 글이나 사전 뜻과 비교해 보세요.' })]);
+    }
+    var lead = kind === 'rare' ? '쓰인 흔적이 적은 말이라, 논문의 ‘없는 말’ 결과를 참고로 보여 드려요. '
+      : kind === 'unknown' ? '실제로 쓰이는지 확인하지 못했어요. 없는 말이라면 논문 결과는 이래요. ' : '';
     var s = shapeOf(q), I = s.info;
     if (!I) {
-      return s.shape.notes.length ? h('p', { class: 'src', text: s.shape.notes[0] + ' 생김새에 따른 논문 수치는 보여 드리지 않아요.' }) : null;
+      return h('div', { class: 'ai-risk lv-mid' }, [head,
+        h('p', { class: 'ar-t', text: lead + '논문에서 AI는 없는 신조어에도 뜻을 지어냈어요. 뜻보다 있는지부터 물어보세요.' }),
+        h('p', { class: 'src', text: (s.shape.notes[0] || '논문은 한글 세 글자 말만 시험했어요.') + ' 그래서 이 말의 모양에 따른 수치는 보여 드리지 않아요.' })]);
     }
-    var body = I === P.random
-      ? ['이런 모양의 가짜 말은 “무슨 뜻이야?”로 물어도 AI가 ', h('b', { text: pctText(I.premise) }), '만 뜻을 단정했어요. 그래도 “추측”이라며 뜻을 지어 준 답까지 치면 ', h('b', { text: pctText(I.guess) }), '였으니 안심하지는 마세요.']
-      : ['이런 모양의 가짜 말을 AI에게 “무슨 뜻이야?”라고 물으면 ', h('b', { text: pctText(I.premise) + '(10번 중 약 ' + Math.round(L.pct(I.premise) / 10) + '번)' }), '가 뜻을 지어냈어요. “실제로 있어?”라고 물으면 ', h('b', { text: pctText(I.confirm) }), '였어요.'];
-    return h('div', { class: 'risk ' + I.risk.level }, [
-      h('span', { class: 'risk-tag', text: I.risk.label }),
-      h('p', null, body),
-      h('p', { class: 'src', text: '생김새: ' + I.label + ' · ' + I.source })
-    ]);
+    var high = I.risk.level === 'high';
+    var body = high
+      ? [lead + '이런 모양(' + I.label + ')의 없는 말을 “무슨 뜻이야?”로 물으면 AI가 ', h('b', { text: pctText(I.premise) + '(' + I.premise.e + '/' + I.premise.n + '건)' }), '에 뜻을 단정했어요. “실제로 있어?”로 물으면 ', h('b', { text: pctText(I.confirm) }), '였어요.']
+      : [lead + '이런 모양(' + I.label + ')은 “무슨 뜻이야?”로 물어도 단정은 ', h('b', { text: pctText(I.premise) }), '였어요. 하지만 두 질문을 합쳐 추측이라며 뜻을 붙인 답(D)까지 치면 ', h('b', { text: pctText(I.guess) + '(' + I.guess.e + '/' + I.guess.n + '건)' }), '였어요. 추측한 뜻도 실제 뜻은 아니에요.'];
+    return h('div', { class: 'ai-risk ' + (high ? 'lv-high' : 'lv-mid') }, [head,
+      h('p', { class: 'ar-lv', text: high ? '위험 높음 · 논문에서 AI가 더 자주 속은 모양' : '위험 중간 · 단정은 드물지만 추측은 많았던 모양' }),
+      h('p', { class: 'ar-t' }, body),
+      h('p', { class: 'src', text: '논문 가설 검증: 줄임말 모양 25.0% 대 무작위 글자 3.3%(두 질문 합산, 차이 21.7%p). 출처: ' + I.source })]);
   }
 
   // 쓰인 흔적이 없거나 드문 말: 받은 AI 답을 바로 점검하러 가는 눈에 띄는 버튼 (논문: 없는 말에도 AI가 뜻을 지어냄)
@@ -458,6 +482,7 @@
       h('p', { class: 'mean', text: w.m }),
       w.e ? h('p', { class: 'ex', text: w.e }) : null,
       h('div', { class: 'meta' }, badges),
+      paper ? riskBox(w.w, 'real') : null,
       ev,
       actions(w.w, false, { copy: function () { return copyText(w.w, statusKey, ['뜻: ' + w.m + (w.full ? ' (' + w.full + ')' : '')].concat(w.note ? ['주의: ' + w.note] : []), rows); } })
     ]);
@@ -476,8 +501,8 @@
     if (f.e !== null && f.e !== undefined) { facts.push(h('p', null, ['세 AI에게 두 가지 질문으로 6번 물었더니 ', h('b', { text: f.e + '번' }), ' 실제 있는 말처럼 뜻을 단정했어요.'])); lines.push('논문 결과: 세 AI·두 질문 6건 중 ' + f.e + '건 뜻을 단정'); }
     if (typeName) facts.push(h('p', { class: 'src', text: '논문에서의 유형: ' + typeName }));
     if (facts.length) kids.push(h('div', { class: 'fact-box' }, facts));
-    kids.push(questionBlock(display));
-    kids.push(riskBlock(f.w));
+    kids.push(riskBox(f.w, 'fake'));
+    kids.push(questionBlock(display, null, true));
     kids.push(checkCta(display, true));
     kids.push(evidenceBlock(rows, [liveSlot(display, function (nr) { rows = rows.concat(nr.map(function (x) { return { label: '지금 다시 확인 · ' + x.label, text: x.text, links: x.links }; })); })]));
     kids.push(actions(display, false, { copy: function () { return copyText(display, 'fake', lines.concat(['AI에게 묻는다면: ' + L.safeQuestion(display).step1]), rows); } }));
@@ -525,6 +550,7 @@
         : where + '네이버 블로그·카페 글 ' + web.count + '건에서 쓰였어요.' + (hasSrc ? ' 쓴 곳은 ' + web.sources + '곳이에요.' : '') + ' 특정 모임이나 팬덤 안에서만 쓰는 말일 수 있어요.'));
       kids.push(statusLine('used', '공식적인 단어라거나 널리 통하는 표현이라는 뜻은 아니에요.'));
       kids.push(usageInfo(web, true));
+      kids.push(riskBox(q, 'real'));
       kids.push(h('p', { class: 'note-honest' }, ['이 앱은 사전에 없는 뜻을 지어내지 않아요. ', h('b', { text: '아래 글에서 어떻게 쓰였는지' }), ' 보고 뜻을 확인해 보세요.']));
       kids.push(samplesBlock(web, display));
       kids.push(questionBlock(display, 'AI에게 뜻을 물어본다면'));
@@ -536,9 +562,9 @@
       kids.push(verdict('드물게\n쓰여요', 'warn', display, '네이버 블로그·카페 글 ' + web.count + '건에서만 이 말을 찾았어요. 아주 새로 생겼거나 일부에서만 쓰는 말일 수 있어요.'));
       kids.push(statusLine('more', '사용 흔적은 ' + web.count + '건뿐이에요.'));
       kids.push(usageInfo(web, false));
+      kids.push(riskBox(q, 'rare'));
       kids.push(samplesBlock(web, display));
-      kids.push(questionBlock(display));
-      kids.push(riskBlock(q));
+      kids.push(questionBlock(display, null, true));
       kids.push(checkCta(display, false));
       kids.push(evidenceBlock(rows));
       kids.push(actions(display, false, { links: links, copy: function () { return copyText(display, 'more', ['사용 흔적 ' + web.count + '건', ask], rows); } }));
@@ -557,9 +583,8 @@
     if (r.state === 'none') {
       kids.push(verdict('쓰인 흔적\n없음', '', display, (r.dictChecked ? '우리말샘에도, ' : '') + '네이버 블로그·카페 글에서도 이 말을 찾지 못했어요. 아주 새로 생겼거나 실제로는 쓰이지 않는 말일 수 있어요.'));
       kids.push(statusLine('none', '없는 단어라는 증명은 아니에요.'));
-      kids.push(h('p', { class: 'note-honest' }, ['AI가 이 말의 뜻을 설명해도 ', h('b', { text: '지어낸 뜻일 수 있어요.' }), ' 아래 질문으로 먼저 있는지부터 물어보세요.']));
-      kids.push(questionBlock(display));
-      kids.push(riskBlock(q));
+      kids.push(riskBox(q, 'none'));
+      kids.push(questionBlock(display, null, true));
       kids.push(checkCta(display, false));
       kids.push(evidenceBlock(rows));
       kids.push(actions(display, false, { copy: function () { return copyText(display, 'none', ['없는 단어라는 증명은 아님', ask], rows); } }));
@@ -572,8 +597,8 @@
     kids.push(verdict(failed ? '확인\n실패' : '아직\n모름', 'wait', display, '이 앱 사전엔 아직 없는 말이에요. ' + (r.why || '지금은 실제로 쓰이는지 인터넷으로 확인하지 못했어요.')));
     kids.push(statusLine(statusKey, failed ? '' : (r.kind === 'offline' ? '파일로 바로 열었기 때문이에요.' : '')));
     if (failed) kids.push(h('div', { class: 'row retry' }, [h('button', { class: 'primary', type: 'button', text: '다시 시도', onclick: function () { runFind(display); } }), h('span', { class: 'src', text: navigator.onLine === false ? '지금 인터넷에 연결되어 있지 않아요. 연결을 확인한 뒤 다시 시도해 주세요.' : '잠시 뒤 다시 시도해 주세요.' })]));
-    kids.push(questionBlock(display));
-    kids.push(riskBlock(q));
+    kids.push(riskBox(q, 'unknown'));
+    kids.push(questionBlock(display, null, true));
     if (rows.length) kids.push(evidenceBlock(rows));
     kids.push(actions(display, true, { links: links, copy: function () { return copyText(display, statusKey, [r.why || '', ask], rows); } }));
     kids.push(paperDetail(q, display));
@@ -1051,6 +1076,16 @@
       box.appendChild(h('p', { class: 'uv-k', text: '물어본 말 + AI 답 종합' }));
       box.appendChild(h('p', { class: 'uv-ex' }, [h('b', { text: '“' + word + '”' }), ' · ' + EXIST[ex].label]));
       box.appendChild(h('p', { class: 'uv-t', text: txt }));
+      // 논문 결과 ①(모양)·③(AI 종류)를 없는 말·드문 말에 덧붙인다
+      if (g === 'none' || g === 'rare') {
+        var si = shapeOf(wq).info, model = ($('cm') && $('cm').value) || '', mi = modelRates(wq), mr = mi.rates[model];
+        var more = [];
+        if (si && si.risk.level === 'high') more.push((r.code === 'E' ? '게다가 ' : '') + '이 말은 ' + si.label + '이에요. 논문에서 AI가 더 자주 속은 모양이에요(가짜 줄임말 25.0% 대 무작위 글자 3.3%).');
+        else if (si) more.push('이 말은 ' + si.label + '이에요. 논문에서 이런 모양은 단정은 드물었지만, 추측이라며 뜻을 붙인 답은 많았어요(두 질문 합산 ' + pctText(si.guess) + ').');
+        if (mr) more.push('논문에서 ' + model + '는 ' + (mi.exact ? '이런 모양(' + mi.label + ')' : '가짜 줄임말(참고값)') + '의 가짜 말 ' + L.pct(mr) + '%(' + mr.e + '/' + mr.n + '건)에 뜻을 단정했어요.' + (r.code === 'E' ? (L.pct(mr) < 10 ? ' 드물게 단정하는 AI인데 이번 답은 단정했어요.' : ' 이번 답도 그 경우예요.') : ''));
+        else if (model === '기타') more.push('논문은 Claude·ChatGPT·Gemini만 시험해서 다른 AI의 결과는 없어요.');
+        if (more.length) { box.appendChild(h('p', { class: 'uv-more', text: more.join(' ') })); line.text += ' ' + more.join(' '); }
+      }
       if (extra) box.appendChild(extra);
       box.appendChild(h('button', { class: 'ghost small', type: 'button', text: g === 'unknown' ? '말 찾기에서 다시 확인하기' : '말 찾기에서 근거 보기', onclick: function () { selectTab('find'); markNav('find'); runFind(word); } }));
     }
