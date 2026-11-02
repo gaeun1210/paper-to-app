@@ -697,9 +697,9 @@
     list.slice(0, shown).forEach(function (w) {
       // 말 + 뜻 한 줄을 담은 작은 카드 (누르면 위 결과 칸에 뜻·근거가 열림)
       box.appendChild(h('button', { class: 'chip word-card' + (w.note ? ' caution-chip' : ''), type: 'button',
-        'aria-label': w.w + (w.note ? ' (' + w.note + ')' : '') + ' — ' + w.m + '. 눌러서 뜻과 근거 보기',
+        'aria-label': w.w + (w.src === 'paper' ? ' (우리말샘 등재 확인)' : '') + (w.note ? ' (' + w.note + ')' : '') + ' — ' + w.m + '. 눌러서 뜻과 근거 보기',
         onclick: function () { runFind(w.w); } }, [
-          h('span', { class: 'wc-w', text: w.w }), h('span', { class: 'wc-m', text: w.m })
+          h('span', { class: 'wc-w' }, [w.w, w.src === 'paper' ? h('span', { class: 'wc-ok', 'aria-hidden': 'true', text: ' ✓' }) : null]), h('span', { class: 'wc-m', text: w.m })
         ]));
     });
     if (!list.length) box.appendChild(h('p', { class: 'empty', text: '조건에 맞는 말이 없어요. 분류나 첫 글자를 “전체”로 바꾸거나, 위 검색창에서 찾아보세요.' }));
@@ -1202,6 +1202,8 @@
   // ── 시작 ──
   $('dict-date').textContent = window.DICT_DATE || '';
   $('dict-count').textContent = String(WORDS.length);
+  if ($('browse-total')) $('browse-total').textContent = String(WORDS.length);
+  if ($('browse-paper')) $('browse-paper').textContent = String(WORDS.filter(function (w) { return w.src === 'paper'; }).length);
   renderRecent();
   renderBrowse();
   try {

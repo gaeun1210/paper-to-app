@@ -1073,3 +1073,6 @@ body[data-tab="check"] .hero .try, body[data-tab="quiz"] .hero .try { display: n
 .usage { background: var(--brand-soft); border-radius: 12px; padding: 12px 16px; margin: 10px 0; }
 .usage-line { margin: 0; font-size: 15px; }
 .usage .src { margin: 6px 0 0; }
+
+/* 13차: 신조어 둘러보기 — 우리말샘 등재 확인 표시 */
+.wc-ok { color: var(--ok); font-weight: 800; }
