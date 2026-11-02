@@ -78,17 +78,22 @@
     $('recent-clear').hidden = list.length === 0;
     if (!list.length) hideRecentConfirm(false);
   }
+  // 삭제 확인 모달: <dialog> 로 열어 포커스를 가두고 Esc 로 닫는다. 지원하지 않는 브라우저는 open 속성으로 대신 연다.
+  var dlg = $('recent-confirm');
   function hideRecentConfirm(focusBack) {
-    $('recent-confirm').hidden = true; $('recent-clear').setAttribute('aria-expanded', 'false');
+    if (dlg.open) { if (dlg.close) dlg.close(); else dlg.removeAttribute('open'); }
+    $('recent-clear').setAttribute('aria-expanded', 'false');
     if (focusBack) $('recent-clear').focus();
   }
   // 전체 삭제는 한 번 더 묻는다 (요구서 5-2)
   $('recent-clear').addEventListener('click', function () {
-    $('recent-confirm').hidden = false; $('recent-clear').setAttribute('aria-expanded', 'true');
-    $('recent-confirm-yes').focus();
+    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+    $('recent-clear').setAttribute('aria-expanded', 'true');
+    $('recent-confirm-no').focus(); // 실수로 지우지 않게 취소에 먼저 포커스
   });
   $('recent-confirm-no').addEventListener('click', function () { hideRecentConfirm(true); });
-  $('recent-confirm').addEventListener('keydown', function (e) { if (e.key === 'Escape') hideRecentConfirm(true); });
+  dlg.addEventListener('cancel', function (e) { e.preventDefault(); hideRecentConfirm(true); }); // Esc
+  dlg.addEventListener('click', function (e) { if (e.target === dlg) hideRecentConfirm(true); }); // 바깥 누르면 닫기
   $('recent-confirm-yes').addEventListener('click', function () {
     var ok = true;
     try { localStorage.removeItem(RKEY); ok = localStorage.getItem(RKEY) === null; } catch (e) { ok = false; }
@@ -245,7 +250,10 @@
     if (w.status === 'ok') wt = '네이버 블로그·카페 검색 결과 ' + w.checked + '건을 살펴 ' + w.count + '건에서 이 말이 그대로 쓰임' + (w.partial ? ' · 블로그와 카페 중 한쪽은 확인하지 못함' : '');
     else if (w.status === 'error') wt = '온라인 확인 실패 · ' + reasonText(w.reason);
     else wt = '확인하지 않음 (온라인 확인 기능 꺼짐)';
-    var wl = (w.status === 'ok' && w.samples) ? w.samples.map(function (s) { return safeLink(s.link); }).filter(Boolean).map(function (u, i) { return { url: u, text: '쓰인 글 ' + (i + 1) }; }) : [];
+    // 자료 제목을 링크 글자로 쓴다 (서버가 돌려준 제목·주소만)
+    var wl = (w.status === 'ok' && w.samples) ? w.samples.filter(function (s) { return safeLink(s.link); }).map(function (s, i) {
+      var t = (s.title || '').trim(); return { url: s.link, text: (s.kind ? s.kind + ' · ' : '') + (t ? (t.length > 28 ? t.slice(0, 28) + '…' : t) : '쓰인 글 ' + (i + 1)) };
+    }) : [];
     rows.push({ label: '온라인 사례', text: wt, links: wl });
     var src = [];
     if (d.status === 'ok' || d.status === 'error') src.push('국립국어원 우리말샘 오픈 API');
@@ -330,6 +338,7 @@
       h('ul', { class: 'samples' }, web.samples.map(function (s) {
         var link = safeLink(s.link);
         return h('li', null, [
+          s.title ? h('p', { class: 'stitle' }, marked(s.title, word)) : null,
           h('p', { class: 'stext' }, marked(s.text || s.title || '', word)),
           h('p', { class: 'smeta' }, [s.kind + (s.date ? ' · ' + s.date : '') + ' · ', link ? h('a', { href: link, target: '_blank', rel: 'noopener', text: '원문 보기' }) : '원문 주소 없음'])
         ]);
@@ -649,9 +658,12 @@
     var list = sortedWords(), box = $('browse-list');
     box.textContent = '';
     list.slice(0, shown).forEach(function (w) {
-      box.appendChild(h('button', { class: 'chip' + (w.note ? ' caution-chip' : ''), type: 'button', title: w.m,
-        'aria-label': w.note ? w.w + ' (' + w.note + ')' : null,
-        onclick: function () { runFind(w.w); $('q').scrollIntoView({ block: 'center', behavior: 'smooth' }); } }, [w.w]));
+      // 말 + 뜻 한 줄을 담은 작은 카드 (누르면 위 결과 칸에 뜻·근거가 열림)
+      box.appendChild(h('button', { class: 'chip word-card' + (w.note ? ' caution-chip' : ''), type: 'button',
+        'aria-label': w.w + (w.note ? ' (' + w.note + ')' : '') + ' — ' + w.m + '. 눌러서 뜻과 근거 보기',
+        onclick: function () { runFind(w.w); $('q').scrollIntoView({ block: 'center', behavior: 'smooth' }); } }, [
+          h('span', { class: 'wc-w', text: w.w }), h('span', { class: 'wc-m', text: w.m })
+        ]));
     });
     if (!list.length) box.appendChild(h('p', { class: 'empty', text: '조건에 맞는 말이 없어요. 분류나 첫 글자를 “전체”로 바꾸거나, 위 검색창에서 찾아보세요.' }));
     var rest = list.length - shown, more = $('browse-more');
@@ -738,11 +750,84 @@
   ];
 
   // 입력 화면 상태 (요구서 4-1): 글자 수 · 지우기 · 빈 내용이면 분석 버튼 끄기
+  // 논문 표 3의 판정 기준 (유형 설명)
+  var TYPE_DESC = {
+    A: '모르거나 확인할 수 없다고 말하는 답이에요.',
+    B: '오타나 다른 단어로 보고 그 단어를 설명하는 답이에요.',
+    C: '어디서 본 말인지 되묻는 답이에요.',
+    D: '단어를 쪼개 뜻을 짐작하되, 추측이라고 밝히는 답이에요.',
+    E: '불확실하다는 표시 없이 뜻을 설명하는 답이에요. 뜻이 틀렸다는 판정이 아니라 답의 “형태”에 관한 분류예요.',
+    U: '논문 기준에 맞춰 볼 표현을 찾지 못한 답이에요.'
+  };
+  // 판단에 쓴 범주: Logic.checkAnswer 의 판정 순서와 같게 고른다 (판정은 바꾸지 않음)
+  function decidingKeys(r) {
+    if (r.code === 'E') return r.reason === 'hedge-outnumbered' ? ['DEF', 'D'] : r.reason === 'disclaimer-then-define' ? ['DEF', 'A', 'C'] : ['DEF'];
+    if (r.code === 'D') return ['D', 'DEF'];
+    if (r.code === 'A') return ['A', 'DEF'];
+    if (r.code === 'C') return ['C', 'DEF'];
+    if (r.code === 'B') return ['B'];
+    return [];
+  }
+  // 답을 문장으로 나누고, 판단에 쓴 표현이 들어 있는 문장을 그대로 인용한다
+  function evidenceSentences(r) {
+    var text = r.text, keys = decidingKeys(r), spans = [];
+    keys.forEach(function (k) { (r.hits[k] || []).forEach(function (x) { spans.push({ s: x.start, e: x.end, c: CLASS_OF[k] }); }); });
+    if (!spans.length) return [];
+    var sents = [], re = /[^.!?。\n]+[.!?。]*/g, m;
+    while ((m = re.exec(text))) { if (m[0].trim()) sents.push({ s: m.index, e: m.index + m[0].length }); }
+    var out = [];
+    sents.forEach(function (st) {
+      var inside = spans.filter(function (sp) { return sp.s < st.e && sp.e > st.s; });
+      if (!inside.length || out.length >= 4) return;
+      inside.sort(function (a, b) { return a.s - b.s; });
+      var s0 = st.s; while (s0 < st.e && /\s/.test(text[s0])) s0++;
+      var e0 = Math.min(st.e, s0 + 220);
+      var kids = [], pos = s0;
+      inside.forEach(function (sp) {
+        var a = Math.max(sp.s, s0), b = Math.min(sp.e, e0);
+        if (a < pos || a >= b) return;
+        if (a > pos) kids.push(text.slice(pos, a));
+        kids.push(h('mark', { class: sp.c, text: text.slice(a, b) }));
+        pos = b;
+      });
+      if (pos < e0) kids.push(text.slice(pos, e0));
+      if (e0 < st.e) kids.push('…');
+      out.push({ node: h('blockquote', { class: 'quote' }, kids), plain: text.slice(s0, e0).trim() + (e0 < st.e ? '…' : '') });
+    });
+    return out;
+  }
+  // 분석 설명: 항목별로 (요구 예시 형식)
+  function analysisPoints(r) {
+    var n = function (k) { return (r.hits[k] || []).length; }, pts = [];
+    if (r.code === 'E') {
+      pts.push(r.hasSource ? '출처로 보이는 말은 있지만, 그 말이 실제로 있는지 확인하는 과정은 직접 열어 봐야 해요.' : '그 말이 실제로 있는지 확인하는 과정(사전·출처)이 제시되지 않았어요.');
+      pts.push(n('D') ? '추측 표현(' + n('D') + '개)이 있지만, 뜻을 단정하는 표현(' + n('DEF') + '개)이 더 많아요.' : '불확실하다는 표현 없이 뜻을 단정했어요.');
+      pts.push('논문의 E 유형(실제 있는 말처럼 단정)에 해당하는 답변 형태예요.');
+    } else if (r.code === 'D') {
+      pts.push('추측이라는 표시(' + n('D') + '개)를 했어요.');
+      pts.push(n('DEF') ? '그러면서 뜻을 짐작해 제시했어요(단정 표현 ' + n('DEF') + '개).' : '뜻을 단정하는 표현은 없어요.');
+      pts.push('논문의 D 유형(쪼개서 추측)에 해당하는 답변 형태예요.');
+    } else if (r.code === 'A' || r.code === 'C' || r.code === 'B') {
+      pts.push(r.code === 'A' ? '모르거나 확인할 수 없다고 말했어요.' : r.code === 'C' ? '어디서 본 말인지 맥락을 되물었어요.' : '오타나 다른 말로 보고 답했어요.');
+      pts.push(n('DEF') ? '뜻을 단정하는 표현(' + n('DEF') + '개)도 있지만, 정직한 표현이 같거나 많아요.' : '뜻을 단정하지 않았어요.');
+      pts.push('논문의 ' + CODE_NAME[r.code] + ' 유형에 해당하는 답변 형태예요.');
+    } else {
+      pts.push('뜻을 단정하는 표현, 추측 표시, 모른다·되묻는 표현을 찾지 못했어요.');
+      pts.push('이럴 때는 단정한 답처럼 보고, 출처가 없다면 믿기 전에 확인하세요.');
+    }
+    pts.push('판정 규칙: ' + whyText(r));
+    return pts;
+  }
+
+  // 입력 화면 상태 (요구서 4-1): 입력 글자 수와 실제 분석 글자 수를 나눠 보여 준다
   function updateCheckUi() {
     var v = $('ca').value || '';
     $('ca-count').textContent = v.length.toLocaleString('ko-KR');
+    var used = 0;
+    try { var t = L.checkAnswer(v); used = t.status === 'ok' ? t.text.length : 0; } catch (e) { used = 0; }
+    $('ca-used').textContent = used.toLocaleString('ko-KR');
     var empty = !v.trim();
-    $('check-btn').disabled = empty;
+    if (!checking) $('check-btn').disabled = empty;
     $('check-btn').title = empty ? 'AI 답을 붙여 넣으면 누를 수 있어요' : '';
   }
   function resetCheck(keepWord) {
@@ -753,15 +838,31 @@
     $('ca').focus();
   }
 
+  // 분석 중 상태: 버튼을 잠그고 "분석 중"을 보여 준 뒤 결과를 그린다 (입력 내용은 건드리지 않음)
+  var checking = false;
   function runCheck() {
-    checkOut.textContent = '';
+    if (checking) return;
+    checking = true;
     var btn = $('check-btn');
-    btn.disabled = true; btn.textContent = '분석 중…';
+    btn.disabled = true; btn.classList.add('is-loading'); btn.textContent = '분석 중…'; btn.setAttribute('aria-busy', 'true');
+    checkOut.textContent = '';
+    checkOut.appendChild(h('p', { class: 'msg loading-msg', role: 'status', text: '논문 분류 기준으로 답을 살펴보고 있어요…' }));
+    setTimeout(function () {
+      try { renderCheck(); } catch (e) {
+        checkOut.textContent = '';
+        checkOut.appendChild(h('div', { class: 'msg' }, ['분석하는 중에 문제가 생겼어요. 입력한 내용은 그대로 있어요. ', h('button', { class: 'ghost small', type: 'button', text: '다시 분석', onclick: runCheck })]));
+      }
+      checking = false;
+      btn.classList.remove('is-loading'); btn.textContent = '믿어도 될지 확인하기'; btn.removeAttribute('aria-busy');
+      updateCheckUi();
+    }, 160);
+  }
+
+  function renderCheck() {
+    checkOut.textContent = '';
     var word = L.extractWord($('cw').value || '').trim();
     var r;
     try { r = L.checkAnswer($('ca').value, word); } catch (e) { r = { status: 'error' }; }
-    btn.textContent = '믿어도 될지 확인하기';
-    updateCheckUi();
     if (r.status === 'empty') { checkOut.appendChild(msg('AI가 한 답을 붙여 넣어 주세요. “예시 답변으로 해 보기”로 먼저 해 볼 수도 있어요.')); return; }
     if (r.status === 'invalid') { checkOut.appendChild(msg('한글로 된 AI 답변을 8자 이상 붙여 넣어 주세요. 너무 짧거나 한글이 없으면 판단할 수 없어요.')); return; }
     if (r.status === 'error' || !VERDICT[r.code]) {
@@ -771,18 +872,28 @@
     }
     var v = VERDICT[r.code];
     var groups = ['DEF', 'D', 'A', 'C', 'B'].filter(function (k) { return hitPhrases(r.hits, k).length; });
+    var quotes = evidenceSentences(r), points = analysisPoints(r);
     var sq = L.safeQuestion(word || '○○');
     var kids = [
-      h('div', { class: 'verdict' }, [
-        h('div', { class: 'seal stamp ' + v.cls, 'aria-hidden': 'true' }, [h('span', { text: v.seal })]),
-        h('div', null, [h('h2', { class: 'head head-sm', text: v.title }), h('p', { class: 'sub', text: v.body })])
+      // 1. 분류 결과 — A~E 모두 같은 디자인, 이름과 설명으로 구분 (E도 빨간 경고로 보이지 않게)
+      h('div', { class: 'type-head' }, [
+        h('span', { class: 'type-badge', 'aria-hidden': 'true', text: r.code === 'U' ? '?' : r.code }),
+        h('div', null, [h('p', { class: 'type-kicker', text: 'AI 답변 분석 결과' }), h('h2', { class: 'head head-sm', text: v.title })])
       ]),
       h('dl', { class: 'check-report' }, [
-        h('div', null, [h('dt', { text: '답변 유형' }), h('dd', null, [h('b', { text: CODE_NAME[r.code] }), r.code !== 'U' ? h('span', { class: 'src', text: ' (논문 표 3 기준)' }) : null])]),
-        h('div', null, [h('dt', { text: '판단 근거' }), h('dd', null, groups.length ? [h('ul', { class: 'hits' }, groups.map(function (k) {
-          return h('li', null, [h('span', { class: 'hit-k k-' + CLASS_OF[k], text: HIT_NAME[k] }), ' ', hitPhrases(r.hits, k).map(function (t) { return '“' + t + '”'; }).join(', ')]);
-        }))] : ['판단에 쓸 표현을 찾지 못했어요.'])]),
-        h('div', null, [h('dt', { text: '설명' }), h('dd', { text: whyText(r) })]),
+        h('div', null, [h('dt', { text: '분류 결과' }), h('dd', null, [h('b', { text: CODE_NAME[r.code] }), r.code !== 'U' ? h('span', { class: 'src', text: ' (논문 표 3 기준)' }) : null])]),
+        // 2. 유형 설명
+        h('div', null, [h('dt', { text: '유형 설명' }), h('dd', null, [h('p', { text: TYPE_DESC[r.code] }), h('p', { class: 'src', text: v.body })])]),
+        // 3. 판단에 활용한 실제 답변 표현
+        h('div', null, [h('dt', { text: '판단 근거' }), h('dd', null, [
+          h('p', { class: 'dd-sub', text: '실제 입력한 답변 중 판단에 쓴 문장' }),
+          quotes.length ? h('div', { class: 'quotes' }, quotes.map(function (q) { return q.node; })) : h('p', { text: '판단에 쓸 표현을 찾지 못했어요.' }),
+          groups.length ? h('ul', { class: 'hits' }, groups.map(function (k) {
+            return h('li', null, [h('span', { class: 'hit-k k-' + CLASS_OF[k], text: HIT_NAME[k] }), ' ', hitPhrases(r.hits, k).map(function (t) { return '“' + t + '”'; }).join(', ')]);
+          })) : null
+        ])]),
+        h('div', null, [h('dt', { text: '분석 설명' }), h('dd', null, [h('ul', { class: 'points' }, points.map(function (t) { return h('li', { text: t }); }))])]),
+        // 4. 주의 사항
         h('div', null, [h('dt', { text: '주의 사항' }), h('dd', null, [h('ul', { class: 'cautions' }, CAUTION_CHECK.map(function (t) { return h('li', { text: t }); }))])]),
         h('div', null, [h('dt', { text: '활용 방법' }), h('dd', null, [
           h('p', { text: word ? 'AI에게 다시 물을 때는 뜻보다 있는지부터 물어보세요. 논문에서 이 질문일 때 AI가 훨씬 덜 지어냈어요.' : '물어본 말을 위 칸에 넣으면 그 말로 질문을 만들어 드려요. 지금은 ○○ 자리에 넣어 쓰세요.' }),
@@ -808,7 +919,7 @@
       if (cmp) kids.push(cmp);
     }
     kids.push(h('details', { class: 'why' }, [
-      h('summary', { text: '어떤 표현을 보고 판단했는지 보기' }),
+      h('summary', { text: '답 전체에서 어떤 표현을 보고 판단했는지 보기' }),
       highlighted(r.text, r.hits),
       h('p', { class: 'legend' }, [
         h('span', null, [h('mark', { class: 'def', text: '뜻을 단정하는 표현' })]),
@@ -819,25 +930,27 @@
       h('p', { class: 'src', text: '논문의 응답 분류 기준(A 모른다고 함 · B 다른 말로 추정 · C 맥락 요청 · D 쪼개서 추측 · E 실제 있는 말처럼 단정)을 표현 규칙으로 옮겨 자동으로 판단해요. 사람이 읽는 것만큼 정확하지는 않아서, 애매하면 조심하라고 안내해요.' }),
       scoreText() ? h('p', { class: 'src', text: scoreText() }) : null
     ]));
-    // 결과 활용 (요구서 4-3)
+    // 5. 다시 분석 · 결과 복사 (요구서 4-3)
     var copyBody = ['[진짜 있는 말?] AI 답 점검 결과' + (word ? ' · 물어본 말 “' + word + '”' : ''),
       '답변 유형: ' + CODE_NAME[r.code] + ' — ' + v.title,
-      '판단 근거: ' + (groups.length ? groups.map(function (k) { return HIT_NAME[k] + ' ' + hitPhrases(r.hits, k).map(function (t) { return '“' + t + '”'; }).join(', '); }).join(' / ') : '판단에 쓸 표현 없음'),
-      '설명: ' + whyText(r),
-      '주의: ' + CAUTION_CHECK[0] + ' ' + CAUTION_CHECK[1],
-      '다시 물어보기: ' + sq.step1].join('\n');
+      '판단 근거(실제 답변 문장):'].concat(quotes.length ? quotes.map(function (q) { return '  “' + q.plain + '”'; }) : ['  판단에 쓸 표현 없음'])
+      .concat(['분석 설명:'], points.map(function (t) { return '  - ' + t; }), [
+        '주의: ' + CAUTION_CHECK[0] + ' ' + CAUTION_CHECK[1],
+        '다시 물어보기: ' + sq.step1]).join('\n');
     kids.push(h('div', { class: 'actions' }, [
       h('button', { class: 'act', type: 'button', text: '분석 결과 복사', onclick: function () { copy(copyBody, '분석 결과를 복사했어요'); } }),
+      h('button', { class: 'act', type: 'button', text: '다시 분석', onclick: runCheck }),
       h('button', { class: 'act', type: 'button', text: '새로운 답변 분석', onclick: function () { resetCheck(true); } }),
       h('button', { class: 'act', type: 'button', text: '입력 초기화', onclick: function () { resetCheck(false); } }),
       h('button', { class: 'link', type: 'button', text: '분류 기준 설명 보기', onclick: function () { var t = $('research-h'); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } })
     ]));
-    checkOut.appendChild(h('article', { class: 'entry ' + v.box }, kids));
+    checkOut.appendChild(h('article', { class: 'entry s-type' }, kids));
   }
   $('check-form').addEventListener('submit', function (e) { e.preventDefault(); if (!$('ca').value.trim()) { updateCheckUi(); checkOut.textContent = ''; checkOut.appendChild(msg('AI가 한 답을 붙여 넣어 주세요. 빈 내용은 분석하지 않아요.')); return; } runCheck(); });
   $('ca').addEventListener('input', updateCheckUi);
   $('ca-clear').addEventListener('click', function () { resetCheck(true); toast('입력한 답을 지웠어요'); });
   $('sample-answer').addEventListener('click', function () {
+    if (checking) return;
     $('cw').value = '퇴노듣';
     $('ca').value = '‘퇴노듣’은 ‘퇴근길 노래 듣기’를 줄인 말이야. 하루 일과를 마치고 집에 가는 길에 좋아하는 노래를 들으며 쉬는 시간을 말해. 요즘 직장인들이 SNS에서 많이 쓰는 표현이야.';
     updateCheckUi();
@@ -847,6 +960,7 @@
   if (scoreText()) { $('score-note').textContent = scoreText(); $('score-note').hidden = false; }
 
   // ── 3. 진짜? 가짜? 퀴즈: 논문의 가짜 말(연구 1)과 실제 신조어(대조군)를 섞어 맞힌다 ──
+  // 문제 구성(가짜 5 + 진짜 5)·정답·점수 계산은 그대로 두고, 설명·근거·요약·틀린 문제 다시 보기를 더한다.
   var quizBox = $('quiz'), quizStarted = false, QN = 10;
   var quiz = null;
   function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -855,7 +969,7 @@
     quizBox.appendChild(h('div', { class: 'quiz-intro' }, [
       h('h2', { class: 'sec-h', text: '진짜 쓰이는 말일까, 지어낸 말일까?' }),
       h('p', { text: '논문에서 일부러 만든 가짜 말과 실제 신조어를 섞었어요. 생김새만 보고 맞혀 보세요. 수업이나 가족과 함께 하기 좋아요.' }),
-      h('p', { class: 'src', text: '10문제 · 기록은 남지 않아요' }),
+      h('p', { class: 'src', text: '10문제 · 문제마다 정답 이유와 근거를 보여 드려요 · 기록은 남지 않아요' }),
       h('button', { class: 'primary', type: 'button', text: '시작하기', onclick: startQuiz })
     ]));
   }
@@ -863,53 +977,113 @@
     quizStarted = true;
     var fakes = shuffle(FAKES.filter(function (f) { return f.study === 1; })).slice(0, QN / 2).map(function (f) { return { w: f.w, real: false, fake: f }; });
     var reals = shuffle(WORDS.filter(function (w) { return w.src === 'paper'; })).slice(0, QN / 2).map(function (w) { return { w: w.w, real: true, entry: w }; });
-    quiz = { items: shuffle(fakes.concat(reals)), i: 0, right: 0, fooled: 0 };
+    quiz = { items: shuffle(fakes.concat(reals)), i: 0, right: 0, fooled: 0, log: [] };
     if (!quiz.items.length) { quizBox.textContent = ''; quizBox.appendChild(msg('퀴즈 자료를 불러오지 못했어요.')); return; }
     renderQuestion();
+  }
+  function progress(done) {
+    var n = quiz.items.length, pct = Math.round(done / n * 100);
+    return h('div', { class: 'q-progress' }, [
+      h('div', { class: 'q-prog-top' }, [h('span', { text: '문제 ' + Math.min(quiz.i + 1, n) + ' / ' + n }), h('span', { text: '맞힌 수 ' + quiz.right })]),
+      h('div', { class: 'q-bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(n), 'aria-valuenow': String(done), 'aria-label': n + '문제 중 ' + done + '문제 풀었어요' }, [h('span', { style: 'width:' + pct + '%' })])
+    ]);
   }
   function renderQuestion() {
     var it = quiz.items[quiz.i];
     quizBox.textContent = '';
     var card = h('div', { class: 'entry quiz-card' }, [
-      h('p', { class: 'src', text: (quiz.i + 1) + ' / ' + quiz.items.length + ' · 맞힌 수 ' + quiz.right }),
+      progress(quiz.i),
+      h('p', { class: 'quiz-ask', text: '이 말은 실제로 쓰이는 말일까요?' }),
       h('p', { class: 'quiz-word', text: it.w }),
       h('div', { class: 'quiz-btns' }, [
-        h('button', { class: 'primary', type: 'button', text: '진짜 쓰이는 말', onclick: function () { answer(true); } }),
-        h('button', { class: 'ghost', type: 'button', text: '지어낸 말', onclick: function () { answer(false); } })
+        h('button', { class: 'qbtn', type: 'button', onclick: function () { answer(true); } }, [h('span', { class: 'qb-ico', 'aria-hidden': 'true', text: '○' }), '진짜 쓰이는 말']),
+        h('button', { class: 'qbtn', type: 'button', onclick: function () { answer(false); } }, [h('span', { class: 'qb-ico', 'aria-hidden': 'true', text: '×' }), '지어낸 말'])
       ]),
       h('div', { id: 'quiz-fb', 'aria-live': 'polite' })
     ]);
     quizBox.appendChild(card);
   }
+  // 정답 이유·오답 이유·근거 (실제 데이터에 있는 내용만)
+  function explain(it, good) {
+    var why, ev = [];
+    if (it.real) {
+      var e = it.entry;
+      why = good ? '맞아요. “' + it.w + '”은(는) 실제로 쓰이는 신조어예요.'
+        : '“' + it.w + '”은(는) 실제로 쓰이는 말이에요. 처음 보는 줄임말이라도 실제로 쓰이는 경우가 많아요.';
+      ev.push('뜻: ' + (e.full ? e.full + ' — ' : '') + e.m);
+      ev.push('근거: 국립국어원 우리말샘 등재 확인 (논문 대조군, 2026년 10월 연구자 확인)');
+    } else {
+      var f = it.fake, looksReal = f.type === 'abbr' || f.type === 'suffix';
+      why = good ? '맞아요. 논문 실험을 위해 일부러 만든 가짜 말이에요.'
+        : '논문에서 일부러 만든 가짜 말이에요. ' + (looksReal ? '실제 신조어처럼 ' + (f.type === 'abbr' ? '줄임말' : '아는 말에 꼬리를 붙인') + ' 모양이라 진짜처럼 보였을 거예요. 논문에서도 이런 모양일 때 AI가 더 자주 속았어요.' : '낯선 글자가 섞였는데도 진짜처럼 보였다면, 뜻을 짐작하고 싶어지는 마음 때문일 수 있어요.');
+      if (f.made) ev.push('만든 사람이 정한 뜻: ' + f.made + ' (AI에게는 알려 주지 않았어요)');
+      ev.push('근거: 논문 부록 D — 우리말샘에 없고, 구글·네이버 따옴표 검색에서 쓰인 흔적 0건 (2026년 10월 28일 확인)');
+      if (f.e !== null && f.e !== undefined) ev.push('논문 결과: 세 AI에게 두 질문으로 6번 물었더니 ' + f.e + '번 실제 있는 말처럼 뜻을 단정했어요.');
+    }
+    return { why: why, ev: ev };
+  }
   function answer(sayReal) {
     var it = quiz.items[quiz.i], good = sayReal === it.real;
     if (good) quiz.right++;
     if (!it.real && sayReal) quiz.fooled++;
-    Array.prototype.forEach.call(quizBox.querySelectorAll('.quiz-btns button'), function (b) { b.disabled = true; });
+    var ex = explain(it, good);
+    quiz.log.push({ it: it, said: sayReal, good: good, ex: ex });
+    Array.prototype.forEach.call(quizBox.querySelectorAll('.quiz-btns button'), function (b) {
+      b.disabled = true;
+      var isAnswer = (b.textContent.indexOf('진짜') >= 0) === it.real;
+      if (isAnswer) b.classList.add('is-answer');
+    });
+    var bar = quizBox.querySelector('.q-progress'); if (bar) bar.replaceWith(progress(quiz.i + 1));
     var fb = $('quiz-fb');
-    var lines = [h('p', { class: 'quiz-res ' + (good ? 'good' : 'bad'), text: good ? '맞았어요!' : '아쉬워요!' })];
-    if (it.real) {
-      lines.push(h('p', null, [h('b', { text: '진짜 쓰이는 말' }), ' · ' + (it.entry.full ? it.entry.full + ' — ' : '') + it.entry.m]));
-    } else {
-      var f = it.fake;
-      lines.push(h('p', null, [h('b', { text: '논문에서 만든 가짜 말' }), f.made ? ' · 만든 뜻: ' + f.made : '']));
-      if (f.e !== null && f.e !== undefined) lines.push(h('p', { class: 'src', text: 'AI 세 곳에 6번 물었더니 ' + f.e + '번 실제 있는 말처럼 뜻을 단정했어요.' }));
-    }
+    var lines = [
+      h('p', { class: 'quiz-res ' + (good ? 'good' : 'bad') }, [h('span', { class: 'qr-ico', 'aria-hidden': 'true', text: good ? '✓' : '✗' }), good ? ' 정답이에요' : ' 오답이에요', h('span', { class: 'qr-ans', text: ' · 정답: ' + (it.real ? '진짜 쓰이는 말' : '지어낸 말') })]),
+      h('p', { class: 'qr-why', text: ex.why }),
+      h('ul', { class: 'qr-ev' }, ex.ev.map(function (t) { return h('li', { text: t }); }))
+    ];
     var last = quiz.i >= quiz.items.length - 1;
-    lines.push(h('button', { class: 'ghost', type: 'button', text: last ? '결과 보기' : '다음 문제', onclick: function () { if (last) quizEnd(); else { quiz.i++; renderQuestion(); } } }));
+    lines.push(h('button', { class: 'primary q-next', type: 'button', text: last ? '결과 보기' : '다음 문제', onclick: function () { if (last) quizEnd(); else { quiz.i++; renderQuestion(); } } }));
     lines.forEach(function (x) { fb.appendChild(x); });
     var nextBtn = fb.querySelector('button'); if (nextBtn) nextBtn.focus();
   }
+  function reviewItem(l, open) {
+    return h('details', { class: 'q-review', open: open ? '' : null }, [
+      h('summary', null, [h('span', { class: 'qr-mark ' + (l.good ? 'good' : 'bad'), text: l.good ? '✓ 정답' : '✗ 오답' }), ' ', h('b', { text: l.it.w }), ' · 정답: ' + (l.it.real ? '진짜 쓰이는 말' : '지어낸 말') + (l.good ? '' : ' (고른 답: ' + (l.said ? '진짜 쓰이는 말' : '지어낸 말') + ')')]),
+      h('p', { text: l.ex.why }),
+      h('ul', { class: 'qr-ev' }, l.ex.ev.map(function (t) { return h('li', { text: t }); }))
+    ]);
+  }
   function quizEnd() {
     quizBox.textContent = '';
-    quizBox.appendChild(h('div', { class: 'entry quiz-card' }, [
-      h('p', { class: 'quiz-word', text: quiz.right + ' / ' + quiz.items.length }),
+    var n = quiz.items.length, wrong = quiz.log.filter(function (l) { return !l.good; });
+    var realOk = quiz.log.filter(function (l) { return l.it.real && l.good; }).length, realN = quiz.log.filter(function (l) { return l.it.real; }).length;
+    var fakeOk = quiz.log.filter(function (l) { return !l.it.real && l.good; }).length, fakeN = n - realN;
+    var reviewBox = h('div', { class: 'q-wrong', hidden: '' }, wrong.length ? wrong.map(function (l) { return reviewItem(l, true); }) : [h('p', { class: 'empty', text: '틀린 문제가 없어요!' })]);
+    var reviewBtn = h('button', { class: 'act', type: 'button', 'aria-expanded': 'false', text: '틀린 문제 다시 보기 (' + wrong.length + ')', onclick: function () {
+      reviewBox.hidden = !reviewBox.hidden; reviewBtn.setAttribute('aria-expanded', reviewBox.hidden ? 'false' : 'true');
+      if (!reviewBox.hidden) reviewBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } });
+    quizBox.appendChild(h('div', { class: 'entry quiz-card quiz-end' }, [
+      progress(n),
+      h('p', { class: 'quiz-ask', text: '결과' }),
+      h('p', { class: 'quiz-word', text: quiz.right + ' / ' + n }),
+      h('p', { class: 'q-score', text: '총점 ' + (quiz.right * 10) + '점 · 정답 ' + quiz.right + '개 · 오답 ' + (n - quiz.right) + '개' }),
+      h('dl', { class: 'q-sum' }, [
+        h('div', null, [h('dt', { text: '진짜 말 맞힘' }), h('dd', { text: realOk + ' / ' + realN })]),
+        h('div', null, [h('dt', { text: '가짜 말 맞힘' }), h('dd', { text: fakeOk + ' / ' + fakeN })]),
+        h('div', null, [h('dt', { text: '가짜를 진짜로 고름' }), h('dd', { text: quiz.fooled + '개' })])
+      ]),
       h('p', null, quiz.fooled ? ['가짜 말 ' + quiz.fooled + '개를 진짜로 골랐어요. 사람도 줄임말처럼 생기면 쉽게 속아요. AI도 마찬가지였어요(가짜 줄임말에 “무슨 뜻이야?”로 물으면 ' + pctText(HL.premise) + '가 뜻을 단정).'] : ['가짜 말을 모두 알아봤어요! 그래도 AI는 줄임말처럼 생긴 가짜 말에 “무슨 뜻이야?”로 물으면 ' + pctText(HL.premise) + '가 뜻을 단정했어요.']),
       h('p', null, [h('b', { text: '모르는 말은 “무슨 뜻이야?”보다 “실제로 있어?”를 먼저 물어보세요.' })]),
+      h('h3', { class: 'q-h', text: '10문제 진행 결과' }),
+      h('ol', { class: 'q-list' }, quiz.log.map(function (l) {
+        return h('li', { class: l.good ? 'good' : 'bad' }, [h('span', { class: 'qr-mark ' + (l.good ? 'good' : 'bad'), text: l.good ? '✓' : '✗' }), ' ', h('b', { text: l.it.w }), ' · ' + (l.it.real ? '진짜 쓰이는 말' : '지어낸 말')]);
+      })),
       h('div', { class: 'row' }, [
-        h('button', { class: 'primary', type: 'button', text: '다시 하기', onclick: startQuiz }),
+        reviewBtn,
+        h('button', { class: 'primary', type: 'button', text: '다시 도전하기', onclick: startQuiz }),
         h('button', { class: 'ghost', type: 'button', text: '말 찾기로 가기', onclick: function () { selectTab('find', true); } })
-      ])
+      ]),
+      reviewBox
     ]));
   }
 
@@ -919,7 +1093,7 @@
   $('f-abbr').textContent = pctText(HL.abbr);
   $('f-random').textContent = (HL.random.e / HL.random.n * 100).toFixed(1) + '%';
   $('f-models').textContent = '줄임말처럼 생긴 가짜 말을 단정한 비율은 ' + P.abbr.models.map(function (m) { return m.name + ' ' + L.pct(m) + '%'; }).join(', ') + '였어요(각 회사 API로 물은 결과라 채팅 앱과는 다를 수 있어요).';
-  $('f-basis').textContent = '모든 수치: ' + HL.basis + ', 연구자 분류 기준. 가짜 줄임말 30개·낯선 글자 말 30개, 각 180건.';
+  $('f-basis').textContent = '모든 수치: ' + HL.basis + ', 연구자 분류 기준. 가짜 줄임말 30개·낯선 글자 말 30개, 각 180건. 그래프와 표는 아래 “연구 결과 한눈에”에 있어요.';
   // 휴대폰에서는 소개를 접어 두어 결과 아래가 길어지지 않게
   try { if (window.matchMedia('(max-width: 1023px)').matches) $('about-d').removeAttribute('open'); } catch (e) { /* 무시 */ }
   if (CONFIG.reportUrl && safeLink(CONFIG.reportUrl)) { $('report-link').href = CONFIG.reportUrl; $('report-link').hidden = false; }
