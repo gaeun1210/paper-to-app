@@ -24,7 +24,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-tab="find">
 <a class="skip" href="#main">본문으로 건너뛰기</a>
 <header class="topbar">
   <div class="wrap topbar-in">
@@ -73,9 +73,9 @@
 </section>
 
 <main id="main" class="wrap">
-  <section class="legend" aria-labelledby="legend-cap">
-    <p class="legend-cap" id="legend-cap">검색하면 이렇게 알려 드려요</p>
-    <ul class="legend-list">
+  <section class="status-guide" aria-labelledby="legend-cap">
+    <p class="sg-cap" id="legend-cap">검색하면 이렇게 알려 드려요</p>
+    <ul class="sg-list">
       <li><span class="lg-ic ok" aria-hidden="true">✓</span><p><b>사전 등재 확인</b><span class="lg-t">국립국어원 우리말샘에 뜻이 실린 말이에요.</span></p></li>
       <li><span class="lg-ic use" aria-hidden="true">●</span><p><b>사용 흔적 발견</b><span class="lg-t">사전엔 없지만 블로그·카페 글에서 실제로 쓰여요.</span></p></li>
       <li><span class="lg-ic no" aria-hidden="true">✕</span><p><b>확인된 흔적 없음</b><span class="lg-t">찾아본 자료에 쓰인 흔적이 없어요. AI가 뜻을 말해도 의심해 보세요.</span></p></li>
@@ -106,7 +106,7 @@
         </dialog>
         <p id="recent-empty" class="empty" hidden>아직 검색한 단어가 없습니다. 궁금한 단어를 검색해 보세요.</p>
         <div id="recent-list" class="sugg"></div>
-        <p class="src">이 기기의 브라우저에만 최대 8개까지 저장돼요. 서버로 보내지 않고, “모두 지우기”는 이 기기의 목록만 지워요.</p>
+        <p class="src" id="recent-note">이 기기의 브라우저에만 최대 8개까지 저장돼요. 서버로 보내지 않고, “모두 지우기”는 이 기기의 목록만 지워요.</p>
         <p id="recent-fail" class="src warn-text" role="status" hidden>이 브라우저에서는 기록을 저장할 수 없어요(개인 정보 보호 모드 등). 찾은 말이 목록에 남지 않아요.</p>
       </div>
 
@@ -135,7 +135,7 @@
   </section>
 
   <section id="panel-check" role="tabpanel" aria-labelledby="tab-check" hidden>
-    <p class="panel-desc"><span class="pd-ico" aria-hidden="true">✓</span> 다른 AI의 답을 붙여 넣으면, 그 답이 뜻을 <strong>단정했는지</strong>, <strong>추측이라고 밝혔는지</strong>, <strong>모른다고 했는지</strong> 논문의 분류 기준(A~E)으로 알려 드려요. 답이 <b>맞는지 틀린지</b>를 가리는 기능은 아니에요.</p>
+    <p class="panel-desc">다른 AI의 답을 붙여 넣으면, 그 답이 뜻을 <strong>단정했는지</strong>, <strong>추측이라고 밝혔는지</strong>, <strong>모른다고 했는지</strong> 논문의 분류 기준(A~E)으로 알려 드려요. 답이 <b>맞는지 틀린지</b>를 가리는 기능은 아니에요.</p>
     <p id="score-note" class="hint small" hidden></p>
     <form id="check-form" autocomplete="off" novalidate>
       <div class="in-box">
@@ -160,16 +160,15 @@
   </section>
 
   <section id="panel-quiz" role="tabpanel" aria-labelledby="tab-quiz" hidden>
-    <p class="panel-desc"><span class="pd-ico" aria-hidden="true">?</span> 논문에서 만든 가짜 말과 실제 신조어를 섞은 10문제예요. 생김새만으로 구분하기가 얼마나 어려운지 직접 겪어 봐요.</p>
+    <p class="panel-desc">논문에서 만든 가짜 말과 실제 신조어를 섞은 10문제예요. 생김새만으로 구분하기가 얼마나 어려운지 직접 겪어 봐요.</p>
     <div id="quiz"></div>
   </section>
 </main>
 
 <footer class="foot">
   <div class="wrap foot-grid">
-    <p><strong>보내는 것은 찾은 낱말 하나뿐이에요.</strong> 실제 쓰임을 확인하려고 그 낱말만 우리말샘·네이버 검색에 보내요. AI 답 점검에 붙여 넣은 글은 어디에도 보내지 않아요. 찾은 말 목록은 이 기기에만 남고 “모두 지우기”로 지울 수 있어요.</p>
-    <p><strong>알아 두세요.</strong> 사용 흔적은 네이버 블로그·카페 글만 살펴봐요. 흔적을 찾지 못했다고 없는 말이라는 증명은 아니에요. AI 답 점검은 답의 태도를 나누는 기능이고, 답이 맞는지 검증하지는 않아요. <a href="paper.html#limits">자세한 한계 보기</a></p>
-    <p>사전 기준일 <span id="dict-date">2026-10-31</span> · 실린 말 <span id="dict-count">122</span>개. “우리말샘 등재 확인” 표시는 논문 대조군으로 국립국어원 우리말샘 등재를 확인한 말이고, 나머지 뜻과 예문은 이 앱이 직접 정리했어요. <a href="paper.html">논문 이야기</a> <a id="report-link" class="report" hidden target="_blank" rel="noopener">빠진 말 알려 주기</a></p>
+    <p class="foot-line">찾은 낱말만 확인용으로 보내고, AI 답 점검에 붙여 넣은 글은 보내지 않아요. 사용 흔적은 네이버 블로그·카페만 살펴보며, 흔적이 없다고 없는 말이라는 증명은 아니에요.</p>
+    <p class="foot-links"><a href="paper.html#limits">개인정보와 한계</a> · <a href="paper.html">논문 이야기</a> · 사전 기준일 <span id="dict-date">2026-10-31</span> · 실린 말 <span id="dict-count">122</span>개 <a id="report-link" class="report" hidden target="_blank" rel="noopener">· 빠진 말 알려 주기</a></p>
     <div class="install">
       <button type="button" class="ghost small" id="install" aria-expanded="false" aria-controls="install-help">휴대폰 홈 화면에 추가하기</button>
       <div id="install-help" class="install-help" hidden></div>

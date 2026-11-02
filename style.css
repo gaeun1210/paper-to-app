@@ -1008,26 +1008,60 @@ a { color: var(--brand); }
 .hero-in > .search-pill { position: relative; z-index: 5; }
 
 /* 검색하면 이렇게 알려 드려요 (기능 카드와 같은 폭, 같은 양쪽 끝) */
-.legend { margin: 0 0 20px; }
-.legend-cap { font-size: 13px; font-weight: 700; color: var(--muted); margin: 0 0 10px; }
-.legend-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+.status-guide { margin: 0 0 20px; }
+.sg-cap { font-size: 13px; font-weight: 700; color: var(--muted); margin: 0 0 10px; }
+.sg-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   background: var(--card); border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--line)); border-radius: 16px;
   box-shadow: 0 10px 30px rgba(29, 91, 234, .07); }
-.legend-list li { display: flex; gap: 14px; align-items: flex-start; padding: 18px 22px; min-width: 0; }
-.legend-list li + li { border-left: 1px solid color-mix(in srgb, var(--brand) 10%, var(--line)); }
+.sg-list li { display: flex; gap: 14px; align-items: flex-start; padding: 18px 22px; min-width: 0; }
+.sg-list li + li { border-left: 1px solid color-mix(in srgb, var(--brand) 10%, var(--line)); }
 .lg-ic { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 16px; }
 .lg-ic.ok { background: var(--ok-soft); color: var(--ok); }
 .lg-ic.use { background: var(--brand-soft); color: var(--brand); }
 .lg-ic.no { background: var(--seal-soft); color: var(--seal); }
-.legend-list b { display: block; font-size: 15px; margin-bottom: 3px; }
-.legend-list span.lg-t { display: block; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+.sg-list b { display: block; font-size: 15px; margin-bottom: 3px; }
+.sg-list span.lg-t { display: block; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
 @media (max-width: 720px) {
-  .legend-list { grid-template-columns: 1fr; }
-  .legend-list li { padding: 14px 16px; }
-  .legend-list li + li { border-left: 0; border-top: 1px solid color-mix(in srgb, var(--brand) 10%, var(--line)); }
+  .sg-list { grid-template-columns: 1fr; }
+  .sg-list li { padding: 14px 16px; }
+  .sg-list li + li { border-left: 0; border-top: 1px solid color-mix(in srgb, var(--brand) 10%, var(--line)); }
 }
 
 /* 논문 이야기: 논문 제목 줄은 넓은 화면에서 한 줄로 */
 .hero-sub .paper { max-width: none; }
 @media (min-width: 1100px) { .hero-sub .paper { white-space: nowrap; } }
-.legend-list p { margin: 0; min-width: 0; }
+.sg-list p { margin: 0; min-width: 0; }
+
+/* ══════════════ 11차: 덜어내기 ══════════════ */
+/* 1. 안내 띠는 홈에서 검색 전에만, 점검·퀴즈에서는 첫 화면을 작게 */
+body[data-tab="check"] .status-guide, body[data-tab="quiz"] .status-guide, body.has-result .status-guide { display: none; }
+body[data-tab="check"] .hero, body[data-tab="quiz"] .hero { padding-top: 28px; padding-bottom: 20px; }
+body[data-tab="check"] .hero .brand, body[data-tab="quiz"] .hero .brand { font-size: 40px; margin-bottom: 6px; }
+body[data-tab="check"] .hero .tagline, body[data-tab="quiz"] .hero .tagline,
+body[data-tab="check"] .hero .try, body[data-tab="quiz"] .hero .try { display: none; }
+@media (max-width: 480px) { body[data-tab="check"] .hero .brand, body[data-tab="quiz"] .hero .brand { font-size: 40px; } }
+
+/* 3. 점검 결과의 자세한 내용은 접어 둠 */
+.check-more { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+.check-more > summary { cursor: pointer; font-weight: 700; font-size: 15px; color: var(--brand); padding: 6px 0; min-height: var(--tap); display: flex; align-items: center; }
+.check-more[open] > summary { margin-bottom: 8px; }
+
+/* 4. 기능 설명에서 체크박스처럼 보이던 아이콘을 뺀 뒤 */
+.panel-desc { padding-left: 0; }
+
+/* 5. 하단 안내 한 줄 */
+.foot-grid { display: block; }
+.foot-line { margin: 0 0 6px; }
+.foot-links { margin: 0 0 14px; }
+.foot-links a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+/* 6. 최근 찾은 말이 비었을 때는 한 줄로 */
+#recent.is-empty { padding-top: 16px; padding-bottom: 16px; }
+#recent.is-empty .sec-head { margin-bottom: 4px; }
+#recent.is-empty #recent-empty { border: 0; background: none; padding: 0; text-align: left; min-height: 0; }
+#recent.is-empty #recent-note { display: none; }
+
+/* 7. 논문 이야기 표는 접어 둠 */
+.ctable-wrap { margin-top: 12px; }
+.ctable-wrap > summary { cursor: pointer; font-size: 14px; font-weight: 700; color: var(--brand); min-height: var(--tap); display: flex; align-items: center; }
+.ctable-wrap[open] > summary { margin-bottom: 4px; }

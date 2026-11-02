@@ -76,6 +76,7 @@
     box.textContent = '';
     list.forEach(function (w) { box.appendChild(h('button', { class: 'chip chip-ico', type: 'button', onclick: function () { runFind(w); } }, [h('span', { class: 'ci', 'aria-hidden': 'true', html: CLOCK_SVG }), h('span', { text: w })])); });
     $('recent-empty').hidden = list.length > 0;
+    $('recent').classList.toggle('is-empty', list.length === 0);
     $('recent-clear').hidden = list.length === 0;
     if (!list.length) hideRecentConfirm(false);
   }
@@ -114,6 +115,7 @@
       $(t.getAttribute('aria-controls')).hidden = !on;
       if (on && focus) t.focus();
     });
+    try { document.body.setAttribute('data-tab', which); } catch (e) { /* 무시 */ }
     if (which === 'quiz' && !quizStarted) renderQuizIntro();
   }
   tabs.forEach(function (t, i) {
@@ -344,6 +346,9 @@
 
   // ── 1. 말 찾기 ──
   var findOut = $('find-result');
+  // 검색 결과가 있으면 결과 안내 띠를 숨긴다
+  function markResult() { document.body.classList.toggle('has-result', !!(findOut && findOut.firstChild)); }
+  if (window.MutationObserver && findOut) new MutationObserver(markResult).observe(findOut, { childList: true });
   var CAUTION = {
     '속된 말': '점잖지 않은 말이에요. 친한 사이에서 장난으로 쓰지만, 어른께나 공적인 자리에서는 피하는 게 좋아요.',
     '놀리는 말': '상대를 놀릴 때 쓰는 말이에요. 듣는 사람이 기분 나쁠 수 있어요.',
@@ -904,9 +909,6 @@
             return h('li', null, [h('span', { class: 'hit-k k-' + CLASS_OF[k], text: HIT_NAME[k] }), ' ', hitPhrases(r.hits, k).map(function (t) { return '“' + t + '”'; }).join(', ')]);
           })) : null
         ])]),
-        h('div', null, [h('dt', { text: '분석 설명' }), h('dd', null, [h('ul', { class: 'points' }, points.map(function (t) { return h('li', { text: t }); }))])]),
-        // 4. 주의 사항
-        h('div', null, [h('dt', { text: '주의 사항' }), h('dd', null, [h('ul', { class: 'cautions' }, CAUTION_CHECK.map(function (t) { return h('li', { text: t }); }))])]),
         h('div', null, [h('dt', { text: '활용 방법' }), h('dd', null, [
           h('p', { text: word ? 'AI에게 다시 물을 때는 뜻보다 있는지부터 물어보세요. 논문에서 이 질문일 때 AI가 훨씬 덜 지어냈어요.' : '물어본 말을 위 칸에 넣으면 그 말로 질문을 만들어 드려요. 지금은 ○○ 자리에 넣어 쓰세요.' }),
           qbox('다시 물어보기', sq.step1), qbox('있다고 하면', sq.step2)
@@ -930,8 +932,14 @@
       }
       if (cmp) kids.push(cmp);
     }
-    kids.push(h('details', { class: 'why' }, [
-      h('summary', { text: '답 전체에서 어떤 표현을 보고 판단했는지 보기' }),
+    // 자세한 분석·주의 사항·답 전체 표시는 한곳에 접어 둔다 (내용은 그대로)
+    kids.push(h('details', { class: 'why check-more' }, [
+      h('summary', { text: '자세히 보기 · 분석 설명, 주의 사항, 답 전체 표시' }),
+      h('dl', { class: 'check-report' }, [
+        h('div', null, [h('dt', { text: '분석 설명' }), h('dd', null, [h('ul', { class: 'points' }, points.map(function (t) { return h('li', { text: t }); }))])]),
+        h('div', null, [h('dt', { text: '주의 사항' }), h('dd', null, [h('ul', { class: 'cautions' }, CAUTION_CHECK.map(function (t) { return h('li', { text: t }); }))])])
+      ]),
+      h('p', { class: 'dd-sub', text: '답 전체에서 판단에 쓴 표현' }),
       highlighted(r.text, r.hits),
       h('p', { class: 'legend' }, [
         h('span', null, [h('mark', { class: 'def', text: '뜻을 단정하는 표현' })]),
@@ -954,7 +962,7 @@
       h('button', { class: 'act', type: 'button', text: '다시 분석', onclick: runCheck }),
       h('button', { class: 'act', type: 'button', text: '새로운 답변 분석', onclick: function () { resetCheck(true); } }),
       h('button', { class: 'act', type: 'button', text: '입력 초기화', onclick: function () { resetCheck(false); } }),
-      h('button', { class: 'link', type: 'button', text: '분류 기준 설명 보기', onclick: function () { var t = $('research-h'); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } })
+      h('a', { class: 'link', href: 'paper.html#codes', target: '_blank', rel: 'noopener', text: '분류 기준 설명 보기 ↗' })
     ]));
     checkOut.appendChild(h('article', { class: 'entry s-type' }, kids));
   }
@@ -980,7 +988,7 @@
     quizBox.textContent = '';
     quizBox.appendChild(h('div', { class: 'quiz-intro' }, [
       h('h2', { class: 'sec-h', text: '진짜 쓰이는 말일까, 지어낸 말일까?' }),
-      h('p', { text: '논문에서 일부러 만든 가짜 말과 실제 신조어를 섞었어요. 생김새만 보고 맞혀 보세요. 수업이나 가족과 함께 하기 좋아요.' }),
+      h('p', { text: '수업이나 가족과 함께 하기 좋아요.' }),
       h('p', { class: 'src', text: '10문제 · 문제마다 정답 이유와 근거를 보여 드려요 · 기록은 남지 않아요' }),
       h('button', { class: 'primary', type: 'button', text: '시작하기', onclick: startQuiz })
     ]));
