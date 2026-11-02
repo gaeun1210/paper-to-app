@@ -1129,3 +1129,6 @@ body[data-tab="check"] .hero .finding, body[data-tab="quiz"] .hero .finding { di
 
 /* 17차: Gemini 버튼 안내 */
 .open-note { flex-basis: 100%; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+/* 18차: 논문 이야기 맨 위 — 돌아가기 링크 자리에 논문 원문 보기 버튼 */
+.paper-link-row { margin: 14px 0 0; }
