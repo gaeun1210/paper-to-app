@@ -212,7 +212,14 @@
     if (dictOk && d.found) return { state: 'dict', dict: d, web: webOk ? w : null };
     if (webOk && w.level === 'used') return { state: 'used', web: w, dictChecked: dictOk };
     if (webOk && w.level === 'rare') return { state: 'rare', web: w, dictChecked: dictOk };
-    if (webOk && w.level === 'none') return { state: 'none', web: w, dictChecked: dictOk };
+    if (webOk && w.level === 'none') {
+      // 검색 실패와 결과 없음을 구분한다: 한쪽 자료라도 확인하지 못했으면 "흔적 없음"이라 하지 않는다
+      var missing = [];
+      if (w.partial) missing.push('네이버 블로그·카페 중 한쪽');
+      if (d.status === 'error') missing.push('국립국어원 우리말샘');
+      if (missing.length) return { state: 'partial', web: w, dictChecked: dictOk, missing: missing };
+      return { state: 'none', web: w, dictChecked: dictOk };
+    }
     if (dictOk) return { state: 'unknown', dictChecked: true, webOff: w.status === 'off' || !w.status };
     // 키가 아직 없음(off) / 연결 실패(error)를 나눠 안내 문구를 다르게 한다
     var off = d.status === 'off' && (w.status === 'off' || !w.status);

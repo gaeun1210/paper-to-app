@@ -54,8 +54,8 @@
   function pctText(o) { return L.pct(o) + '%'; }
   function safeLink(url) { return /^https?:\/\//.test(url || '') ? url : null; }
 
-  // ── 최근 찾은 말 (이 기기에만 저장. 저장이 막힌 브라우저에서는 조용히 건너뜀) ──
-  var RKEY = 'jinjja.recent.v1';
+  // ── 최근 찾은 말 (이 기기에만 저장. 저장이 막힌 브라우저에서는 그 사실을 알린다) ──
+  var RKEY = 'jinjja.recent.v1', saveWarned = false;
   function loadRecent() {
     try { var a = JSON.parse(localStorage.getItem(RKEY) || '[]'); return Array.isArray(a) ? a.filter(function (x) { return typeof x === 'string'; }).slice(0, 8) : []; }
     catch (e) { return []; }
@@ -64,18 +64,38 @@
     if (!word) return;
     var list = loadRecent().filter(function (x) { return x !== word; });
     list.unshift(word);
-    try { localStorage.setItem(RKEY, JSON.stringify(list.slice(0, 8))); } catch (e) { /* 무시 */ }
+    var ok = true;
+    try { localStorage.setItem(RKEY, JSON.stringify(list.slice(0, 8))); ok = localStorage.getItem(RKEY) !== null; } catch (e) { ok = false; }
+    $('recent-fail').hidden = ok; // 저장 실패를 숨기지 않는다 (요구서 8)
+    if (!ok && !saveWarned) { saveWarned = true; toast('이 브라우저에서는 최근 찾은 말이 저장되지 않아요'); }
     renderRecent();
   }
   function renderRecent() {
     var list = loadRecent(), box = $('recent-list');
     box.textContent = '';
     list.forEach(function (w) { box.appendChild(h('button', { class: 'chip', type: 'button', text: w, onclick: function () { runFind(w); } })); });
-    $('recent').hidden = list.length === 0;
+    $('recent-empty').hidden = list.length > 0;
+    $('recent-clear').hidden = list.length === 0;
+    if (!list.length) hideRecentConfirm(false);
   }
+  function hideRecentConfirm(focusBack) {
+    $('recent-confirm').hidden = true; $('recent-clear').setAttribute('aria-expanded', 'false');
+    if (focusBack) $('recent-clear').focus();
+  }
+  // 전체 삭제는 한 번 더 묻는다 (요구서 5-2)
   $('recent-clear').addEventListener('click', function () {
-    try { localStorage.removeItem(RKEY); } catch (e) { /* 무시 */ }
-    renderRecent(); toast('최근 찾은 말을 지웠어요');
+    $('recent-confirm').hidden = false; $('recent-clear').setAttribute('aria-expanded', 'true');
+    $('recent-confirm-yes').focus();
+  });
+  $('recent-confirm-no').addEventListener('click', function () { hideRecentConfirm(true); });
+  $('recent-confirm').addEventListener('keydown', function (e) { if (e.key === 'Escape') hideRecentConfirm(true); });
+  $('recent-confirm-yes').addEventListener('click', function () {
+    var ok = true;
+    try { localStorage.removeItem(RKEY); ok = localStorage.getItem(RKEY) === null; } catch (e) { ok = false; }
+    hideRecentConfirm(false);
+    renderRecent();
+    toast(ok ? '이 기기의 최근 찾은 말을 모두 지웠어요' : '지우지 못했어요. 브라우저 설정을 확인해 주세요.');
+    $('q').focus();
   });
 
   // ── 탭 ──
@@ -184,9 +204,115 @@
     ]);
   }
 
-  function actions(display, withCheck) {
+  // ── 결과 상태 문구 (요구서 3-1): 도장 색깔 말고도 글자로 상태를 알린다 ──
+  var STATUS = {
+    dict: { tag: '사전 등재 확인', text: '사전에서 확인된 단어입니다.', cls: 'ok' },
+    app: { tag: '앱 사전', text: '이 앱 사전에 정리된 단어입니다.', cls: 'neutral' },
+    used: { tag: '사용 흔적 발견', text: '온라인에서 사용된 흔적을 발견했습니다.', cls: 'ok' },
+    more: { tag: '추가 확인 필요', text: '검색 결과가 충분하지 않아 추가 확인이 필요합니다.', cls: 'warn' },
+    none: { tag: '확인된 흔적 없음', text: '현재 확인한 자료에서는 사용 흔적을 찾지 못했습니다.', cls: 'bad' },
+    fail: { tag: '검색 실패', text: '자료를 확인하지 못했습니다. 결과가 없다는 뜻이 아니에요.', cls: 'wait' },
+    off: { tag: '확인 기능 꺼짐', text: '온라인 확인 기능이 켜져 있지 않아 사용 흔적을 확인하지 못했습니다.', cls: 'wait' },
+    fake: { tag: '논문 실험용 단어', text: '논문 실험을 위해 일부러 만든 단어입니다.', cls: 'bad' },
+    loading: { tag: '확인 중', text: '사전과 온라인 자료를 확인하고 있어요…', cls: 'wait' }
+  };
+  function statusLine(key, extra) {
+    var s = STATUS[key];
+    return h('p', { class: 'status st-' + s.cls }, [h('span', { class: 'status-tag', text: s.tag }), ' ', s.text, extra ? h('span', { class: 'status-extra', text: ' ' + extra }) : null]);
+  }
+
+  // ── 확인 근거 (요구서 3-2): 서버가 실제로 돌려준 것만 적는다 ──
+  var REASON = { timeout: '응답 시간 초과', network: '연결 실패', 'bad-json': '응답 형식 오류' };
+  function reasonText(r) {
+    if (!r) return '';
+    if (REASON[r]) return REASON[r];
+    if (/^http-\d+/.test(r)) return '서버 응답 오류(' + r.slice(5) + ')';
+    if (/^api-/.test(r)) return '사전 서비스 오류';
+    return '알 수 없는 오류';
+  }
+  var SCOPE = '네이버 블로그·카페를 따옴표로 검색해 관련도 순 각각 최대 100건의 제목·요약만 살펴봐요. 글 본문 전체, 다른 SNS·커뮤니티는 보지 않아요. 같은 말은 하루 동안 저장해 둔 결과를 보여 줄 수 있어요.';
+
+  // 서버 결과(data)로 근거 줄을 만든다: [{label, text, links:[{url,text}]}]
+  function serverEvidence(data) {
+    var d = (data && data.dict) || {}, w = (data && data.web) || {}, rows = [];
+    var dt;
+    if (d.status === 'ok') dt = d.found ? '국립국어원 우리말샘에 있음 (뜻풀이 ' + d.senses.length + '개)' : '국립국어원 우리말샘에서 찾지 못함';
+    else if (d.status === 'error') dt = '우리말샘 확인 실패 · ' + reasonText(d.reason);
+    else dt = '확인하지 않음 (우리말샘 확인 기능 꺼짐)';
+    var dl = (d.status === 'ok' && d.found) ? d.senses.map(function (s) { return safeLink(s.link); }).filter(Boolean).slice(0, 1).map(function (u) { return { url: u, text: '우리말샘 원문' }; }) : [];
+    rows.push({ label: '사전 확인', text: dt, links: dl });
+    var wt;
+    if (w.status === 'ok') wt = '네이버 블로그·카페 검색 결과 ' + w.checked + '건을 살펴 ' + w.count + '건에서 이 말이 그대로 쓰임' + (w.partial ? ' · 블로그와 카페 중 한쪽은 확인하지 못함' : '');
+    else if (w.status === 'error') wt = '온라인 확인 실패 · ' + reasonText(w.reason);
+    else wt = '확인하지 않음 (온라인 확인 기능 꺼짐)';
+    var wl = (w.status === 'ok' && w.samples) ? w.samples.map(function (s) { return safeLink(s.link); }).filter(Boolean).map(function (u, i) { return { url: u, text: '쓰인 글 ' + (i + 1) }; }) : [];
+    rows.push({ label: '온라인 사례', text: wt, links: wl });
+    var src = [];
+    if (d.status === 'ok' || d.status === 'error') src.push('국립국어원 우리말샘 오픈 API');
+    if (w.status === 'ok' || w.status === 'error') src.push('네이버 검색 API(블로그·카페)');
+    rows.push({ label: '출처', text: src.length ? src.join(', ') : '확인한 출처 없음', links: [] });
+    rows.push({ label: '확인일', text: (data && data.checkedAt) ? data.checkedAt : '알 수 없음', links: [] });
+    rows.push({ label: '범위와 한계', text: SCOPE, links: [] });
+    return rows;
+  }
+  function localEvidence(w) {
+    return [
+      { label: '사전 확인', text: w.src === 'paper' ? '국립국어원 우리말샘 등재 확인 (논문 대조군, 2026년 10월 연구자 확인)' : '이 앱 제작자가 정리한 뜻 (국립국어원 사전 등재는 이 화면에서 따로 확인하지 않음)', links: [] },
+      { label: '온라인 사례', text: '아직 확인하지 않음 · 아래 “온라인 근거 확인하기”로 확인할 수 있어요', links: [] },
+      { label: '출처', text: '이 앱 사전' + (w.src === 'paper' ? ', 논문 부록 D(대조군 목록)' : ''), links: [] },
+      { label: '확인일', text: '사전 기준일 ' + (window.DICT_DATE || ''), links: [] }
+    ];
+  }
+  function fakeEvidence(f) {
+    return [
+      { label: '사전 확인', text: '국립국어원 우리말샘에 없음 (논문 실험 전 연구자 확인)', links: [] },
+      { label: '온라인 사례', text: '구글·네이버 따옴표 검색에서 쓰인 흔적 없음 (같은 시기 확인)', links: [] },
+      { label: '출처', text: '논문 부록 D·E (연구 ' + f.study + '의 단어 목록과 검증 기록)', links: [] },
+      { label: '확인일', text: f.study === 1 ? '2026년 10월 28일' : '2026년 10월 28~29일', links: [] },
+      { label: '범위와 한계', text: '그 뒤에 누군가 새로 쓰기 시작했을 수 있어요. “온라인 근거 확인하기”로 지금 다시 확인할 수 있어요.', links: [] }
+    ];
+  }
+  function evidenceBlock(rows, extra) {
+    return h('div', { class: 'evidence' }, [
+      h('h3', { text: '확인 근거' }),
+      h('dl', null, rows.map(function (r) {
+        return h('div', null, [h('dt', { text: r.label }), h('dd', null, [r.text].concat(r.links.length ? [h('span', { class: 'ev-links' }, r.links.map(function (l) {
+          return h('a', { href: l.url, target: '_blank', rel: 'noopener', text: l.text + ' ↗' });
+        }))] : []))]);
+      }))
+    ].concat(extra || []));
+  }
+  function evidenceText(rows) { return rows.map(function (r) { return '- ' + r.label + ': ' + r.text + (r.links.length ? ' (' + r.links.map(function (l) { return l.url; }).join(', ') + ')' : ''); }).join('\n'); }
+
+  // 결과 복사용 글
+  function shareUrl(word) {
+    var base = location.protocol === 'file:' ? '' : location.origin + location.pathname;
+    return base ? base + '?q=' + encodeURIComponent(word) : '';
+  }
+  function copyText(word, statusKey, lines, rows) {
+    var s = STATUS[statusKey];
+    return ['[진짜 있는 말?] “' + word + '” 확인 결과', '상태: ' + s.tag + ' — ' + s.text]
+      .concat(lines || [])
+      .concat(rows && rows.length ? ['확인 근거', evidenceText(rows)] : [])
+      .concat(shareUrl(word) ? ['결과 다시 보기: ' + shareUrl(word)] : [])
+      .join('\n');
+  }
+
+  // ── 결과 활용 (요구서 3-3): 복사 · 다시 검색 · 지우기 · 출처 바로가기 + 기존 공유·답 점검 ──
+  function clearFind() {
+    lookupSeq++;
+    var input = $('q');
+    input.value = ''; findOut.textContent = ''; showHome(true); setUrl({}); input.focus();
+  }
+  function actions(display, withCheck, opts) {
+    opts = opts || {};
+    var first = (opts.links || []).filter(Boolean)[0];
     return h('div', { class: 'actions' }, [
-      withCheck ? h('button', { class: 'link', type: 'button', text: '받은 AI 답 점검하기', onclick: function () { $('cw').value = display; selectTab('check', true); $('ca').focus(); } }) : null,
+      opts.copy ? h('button', { class: 'act', type: 'button', text: '결과 복사', onclick: function () { copy(opts.copy(), '검색 결과와 근거를 복사했어요'); } }) : null,
+      h('button', { class: 'act', type: 'button', text: '다시 검색', onclick: function () { runFind(display); } }),
+      h('button', { class: 'act', type: 'button', text: '결과 지우기', onclick: clearFind }),
+      first ? h('a', { class: 'act', href: first, target: '_blank', rel: 'noopener', text: '출처 바로가기 ↗' }) : null,
+      withCheck ? h('button', { class: 'link', type: 'button', text: '받은 AI 답 점검하기', onclick: function () { $('cw').value = display; updateCheckUi(); selectTab('check', true); $('ca').focus(); } }) : null,
       h('button', { class: 'link', type: 'button', text: '이 결과 공유하기', onclick: function () { shareLink({ q: display }, display + ' · 진짜 있는 말?'); } }),
       CONFIG.reportUrl && safeLink(CONFIG.reportUrl) ? h('a', { class: 'link', href: CONFIG.reportUrl, target: '_blank', rel: 'noopener', text: '빠진 말 알려 주기' }) : null
     ]);
@@ -221,13 +347,57 @@
     '무례한 말': '상대를 무시하는 느낌을 주는 말이에요. 듣는 사람이 기분 나쁠 수 있어요.'
   };
 
+  // 서버에 실제 쓰임을 묻는다. cb({ data, r }) — r 은 Logic.interpretLookup 결과 + 실패 구분
+  var lookupSeq = 0;
+  function fetchLookup(word, cb) {
+    if (location.protocol === 'file:' || !window.fetch) { cb({ data: null, r: { state: 'unknown', kind: 'offline' } }); return; }
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 9000);
+    fetch('api/lookup?w=' + encodeURIComponent(word), ctrl ? { signal: ctrl.signal } : {})
+      .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then(function (data) {
+        var r = L.interpretLookup(data);
+        r.checkedAt = data && data.checkedAt;
+        if (r.state === 'unknown') r.kind = r.off ? 'off' : r.webOff ? 'webOff' : 'error';
+        cb({ data: data, r: r });
+      })
+      .catch(function () { cb({ data: null, r: { state: 'unknown', kind: 'network' } }); })
+      .then(function () { clearTimeout(timer); });
+  }
+
+  // 사전 카드 아래 "온라인 근거 확인하기": 서버 결과로 근거를 바꿔 끼운다 (사전 뜻은 그대로)
+  function liveCheckButton(word, slot, onRows) {
+    if (location.protocol === 'file:') return h('p', { class: 'src', text: '파일로 바로 열어서 온라인 근거 확인은 꺼져 있어요.' });
+    var btn = h('button', { class: 'ghost small', type: 'button', text: '온라인 근거 확인하기', onclick: function () {
+      btn.disabled = true; btn.textContent = '확인 중…';
+      fetchLookup(word, function (o) {
+        var rows = o.data ? serverEvidence(o.data) : [{ label: '온라인 확인', text: o.r.kind === 'offline' ? '파일로 열어서 확인할 수 없어요' : '확인하지 못했어요 (' + (o.r.kind === 'network' ? '연결 실패' : '서비스 오류') + '). 결과가 없다는 뜻이 아니에요.', links: [] }];
+        var extra = [];
+        if (o.data && o.data.web && o.data.web.samples && o.data.web.samples.length) extra.push(samplesBlock(o.data.web, word));
+        if (!o.data) extra.push(h('button', { class: 'ghost small', type: 'button', text: '다시 시도', onclick: function () { slot.replaceWith(liveSlot(word, onRows)); } }));
+        var nb = evidenceBlock(rows, extra);
+        slot.replaceWith(nb);
+        if (onRows) onRows(rows);
+      });
+    } });
+    return btn;
+  }
+  function liveSlot(word, onRows) {
+    var slot = h('div', { class: 'live-slot' });
+    slot.appendChild(liveCheckButton(word, slot, onRows));
+    return slot;
+  }
+
   function entryCard(w) {
-    var badges = [h('span', { class: 'badge ok', text: w.src === 'paper' ? '우리말샘 등재 확인' : '이 앱 사전' })];
+    var paper = w.src === 'paper';
+    var badges = [h('span', { class: 'badge ok', text: paper ? '우리말샘 등재 확인' : '이 앱 사전' })];
     if (w.cat) badges.push(h('span', { class: 'badge', text: w.cat }));
     badges.push(h('span', { class: 'badge', text: '기준일 ' + window.DICT_DATE }));
+    var rows = localEvidence(w), statusKey = paper ? 'dict' : 'app';
+    var ev = evidenceBlock(rows, [liveSlot(w.w, function (nr) { rows = nr; })]);
     return h('article', { class: 'entry s-ok' }, [
-      verdict('확인된\n뜻 있음', 'ok', w.w, w.full),
-      srOnly('판정: 확인된 뜻 있음'),
+      verdict(paper ? '확인된\n뜻 있음' : '앱 사전에\n있음', paper ? 'ok' : 'neutral', w.w, w.full),
+      statusLine(statusKey, paper ? '' : '국립국어원 사전 등재 여부는 아래 “온라인 근거 확인하기”로 확인할 수 있어요.'),
       w.note ? h('div', { class: 'caution', role: 'note' }, [
         h('span', { class: 'caution-icon', 'aria-hidden': 'true', text: '!' }),
         h('p', null, [h('b', { class: 'cb', text: w.note }), CAUTION[w.note] || '쓸 때 주의가 필요한 말이에요.'])
@@ -235,42 +405,48 @@
       h('p', { class: 'mean', text: w.m }),
       w.e ? h('p', { class: 'ex', text: w.e }) : null,
       h('div', { class: 'meta' }, badges),
-      actions(w.w, false)
+      ev,
+      actions(w.w, false, { copy: function () { return copyText(w.w, statusKey, ['뜻: ' + w.m + (w.full ? ' (' + w.full + ')' : '')].concat(w.note ? ['주의: ' + w.note] : []), rows); } })
     ]);
   }
 
   // 논문에서 일부러 만든 가짜 말
   function fakeCard(f, display) {
     var typeName = P[f.type] ? P[f.type].label : '';
+    var rows = fakeEvidence(f);
     var kids = [
       verdict('논문의\n가짜 말', '', display, '논문 실험을 위해 일부러 만든 말이에요. 우리말샘·구글·네이버 어디에서도 쓰인 흔적이 없음을 확인했어요(2026년 10월, 연구 ' + f.study + ').'),
-      srOnly('판정: 논문에서 만든 가짜 말, 확인된 뜻 없음')
+      statusLine('fake', '2026년 10월 확인 기준이에요.')
     ];
-    var facts = [];
-    if (f.made) facts.push(h('p', null, ['만든 사람이 정한 뜻: ', h('b', { text: f.made }), h('span', { class: 'src', text: ' (AI에게는 알려 주지 않았어요)' })]));
-    if (f.e !== null && f.e !== undefined) facts.push(h('p', null, ['세 AI에게 두 가지 질문으로 6번 물었더니 ', h('b', { text: f.e + '번' }), ' 실제 있는 말처럼 뜻을 단정했어요.']));
+    var facts = [], lines = [];
+    if (f.made) { facts.push(h('p', null, ['만든 사람이 정한 뜻: ', h('b', { text: f.made }), h('span', { class: 'src', text: ' (AI에게는 알려 주지 않았어요)' })])); lines.push('만든 뜻: ' + f.made + ' (AI에게는 알려 주지 않음)'); }
+    if (f.e !== null && f.e !== undefined) { facts.push(h('p', null, ['세 AI에게 두 가지 질문으로 6번 물었더니 ', h('b', { text: f.e + '번' }), ' 실제 있는 말처럼 뜻을 단정했어요.'])); lines.push('논문 결과: 세 AI·두 질문 6건 중 ' + f.e + '건 뜻을 단정'); }
     if (typeName) facts.push(h('p', { class: 'src', text: '논문에서의 유형: ' + typeName }));
     if (facts.length) kids.push(h('div', { class: 'fact-box' }, facts));
     kids.push(questionBlock(display));
     kids.push(riskBlock(f.w));
-    kids.push(actions(display, true));
+    kids.push(evidenceBlock(rows, [liveSlot(display, function (nr) { rows = rows.concat(nr.map(function (x) { return { label: '지금 다시 확인 · ' + x.label, text: x.text, links: x.links }; })); })]));
+    kids.push(actions(display, true, { copy: function () { return copyText(display, 'fake', lines.concat(['AI에게 묻는다면: ' + L.safeQuestion(display).step1]), rows); } }));
     kids.push(paperDetail(f.w, display));
     return h('article', { class: 'entry s-bad' }, kids);
   }
 
   // 사전에 없는 말: 먼저 "확인 중" 카드를 보여 주고, 결과가 오면 바꾼다
-  var lookupSeq = 0;
   function pendingCard(display) {
     return h('article', { class: 'entry s-wait', 'aria-busy': 'true' }, [
-      verdict('확인\n중', 'wait', display, '이 앱 사전엔 아직 없어요. 우리말샘과 네이버 블로그·카페에서 실제로 쓰였는지 찾고 있어요…')
+      verdict('확인\n중', 'wait', display, '이 앱 사전엔 아직 없어요. 우리말샘과 네이버 블로그·카페에서 실제로 쓰였는지 찾고 있어요…'),
+      statusLine('loading')
     ]);
   }
 
-  function lookupCard(r, q, display) {
+  function lookupCard(r, q, display, data) {
     var web = r.web, kids = [];
+    var rows = data ? serverEvidence(data) : [];
+    var links = rows.reduce(function (a, x) { return a.concat(x.links.map(function (l) { return l.url; })); }, []);
+    var ask = 'AI에게 묻는다면: ' + L.safeQuestion(display).step1;
     if (r.state === 'dict') {
       kids.push(verdict('사전에\n있음', 'ok', display, '국립국어원 우리말샘에 실린 말이에요.'));
-      kids.push(srOnly('판정: 우리말샘에 있는 말'));
+      kids.push(statusLine('dict', web && web.count ? '온라인 글에서도 쓰였어요.' : ''));
       kids.push(h('ol', { class: 'senses' }, r.dict.senses.map(function (s) {
         var link = safeLink(s.link);
         return h('li', null, [
@@ -280,74 +456,80 @@
       })));
       if (web && web.count) kids.push(h('p', { class: 'src', text: '네이버 블로그·카페 글 ' + web.count + '건에서도 이 말이 쓰였어요.' }));
       kids.push(h('div', { class: 'meta' }, [h('span', { class: 'badge ok', text: '출처: 우리말샘' }), h('span', { class: 'badge', text: '확인일 ' + (r.checkedAt || '') })]));
-      kids.push(actions(display, false));
+      kids.push(evidenceBlock(rows));
+      kids.push(actions(display, false, { links: links, copy: function () { return copyText(display, 'dict', r.dict.senses.map(function (s, i) { return '뜻 ' + (i + 1) + ': ' + s.def; }), rows); } }));
       return h('article', { class: 'entry s-ok' }, kids);
     }
     if (r.state === 'used') {
       kids.push(verdict('실제로\n쓰여요', 'ok', display, '이 앱 사전' + (r.dictChecked ? '과 우리말샘' : '') + '에는 없지만, 네이버 블로그·카페 글 ' + web.count + '건에서 이 말이 그대로 쓰였어요.'));
-      kids.push(srOnly('판정: 실제로 쓰이는 말'));
+      kids.push(statusLine('used', '공식적인 단어라거나 널리 통하는 표현이라는 뜻은 아니에요.'));
       kids.push(h('p', { class: 'note-honest' }, ['이 앱은 사전에 없는 뜻을 지어내지 않아요. ', h('b', { text: '아래 글에서 어떻게 쓰였는지' }), ' 보고 뜻을 확인해 보세요.']));
       kids.push(samplesBlock(web, display));
       kids.push(questionBlock(display, 'AI에게 뜻을 물어본다면'));
-      kids.push(actions(display, true));
+      kids.push(evidenceBlock(rows));
+      kids.push(actions(display, true, { links: links, copy: function () { return copyText(display, 'used', [ask], rows); } }));
       return h('article', { class: 'entry s-ok' }, kids);
     }
     if (r.state === 'rare') {
       kids.push(verdict('드물게\n쓰여요', 'warn', display, '네이버 블로그·카페 글 ' + web.count + '건에서만 이 말을 찾았어요. 아주 새로 생겼거나 일부에서만 쓰는 말일 수 있어요.'));
-      kids.push(srOnly('판정: 드물게 쓰이는 말'));
+      kids.push(statusLine('more', '사용 흔적은 ' + web.count + '건뿐이에요.'));
       kids.push(samplesBlock(web, display));
       kids.push(questionBlock(display));
       kids.push(riskBlock(q));
-      kids.push(actions(display, true));
+      kids.push(evidenceBlock(rows));
+      kids.push(actions(display, true, { links: links, copy: function () { return copyText(display, 'more', ['사용 흔적 ' + web.count + '건', ask], rows); } }));
+      kids.push(paperDetail(q, display));
+      return h('article', { class: 'entry s-warn' }, kids);
+    }
+    if (r.state === 'partial') {
+      kids.push(verdict('추가 확인\n필요', 'warn', display, '일부 자료를 확인하지 못했어요. 확인한 자료에서는 쓰인 흔적을 찾지 못했지만, 이것만으로 판단하기는 어려워요.'));
+      kids.push(statusLine('more', '확인하지 못한 자료: ' + r.missing.join(', ') + '.'));
+      kids.push(questionBlock(display));
+      kids.push(evidenceBlock(rows, [h('button', { class: 'ghost small', type: 'button', text: '다시 시도', onclick: function () { runFind(display); } })]));
+      kids.push(actions(display, true, { links: links, copy: function () { return copyText(display, 'more', ['확인하지 못한 자료: ' + r.missing.join(', '), ask], rows); } }));
       kids.push(paperDetail(q, display));
       return h('article', { class: 'entry s-warn' }, kids);
     }
     if (r.state === 'none') {
       kids.push(verdict('쓰인 흔적\n없음', '', display, (r.dictChecked ? '우리말샘에도, ' : '') + '네이버 블로그·카페 글에서도 이 말을 찾지 못했어요. 아주 새로 생겼거나 실제로는 쓰이지 않는 말일 수 있어요.'));
-      kids.push(srOnly('판정: 쓰인 흔적 없음'));
+      kids.push(statusLine('none', '없는 단어라는 증명은 아니에요.'));
       kids.push(h('p', { class: 'note-honest' }, ['AI가 이 말의 뜻을 설명해도 ', h('b', { text: '지어낸 뜻일 수 있어요.' }), ' 아래 질문으로 먼저 있는지부터 물어보세요.']));
       kids.push(questionBlock(display));
       kids.push(riskBlock(q));
-      kids.push(actions(display, true));
+      kids.push(evidenceBlock(rows));
+      kids.push(actions(display, true, { copy: function () { return copyText(display, 'none', ['없는 단어라는 증명은 아님', ask], rows); } }));
       kids.push(paperDetail(q, display));
       return h('article', { class: 'entry s-bad' }, kids);
     }
-    // unknown: 인터넷 확인을 못 함 (파일로 열었거나, 연결이 끊겼거나, 키가 없음)
-    kids.push(verdict('아직\n모름', 'wait', display, '이 앱 사전엔 아직 없는 말이에요. ' + (r.why || '지금은 실제로 쓰이는지 인터넷으로 확인하지 못했어요.')));
-    kids.push(srOnly('판정: 확인하지 못함'));
+    // unknown: 확인 기능 꺼짐(off) · 우리말샘만 확인(webOff) · 검색 실패(error·network·offline)
+    var failed = r.kind === 'error' || r.kind === 'network';
+    var statusKey = failed ? 'fail' : 'off';
+    kids.push(verdict(failed ? '확인\n실패' : '아직\n모름', 'wait', display, '이 앱 사전엔 아직 없는 말이에요. ' + (r.why || '지금은 실제로 쓰이는지 인터넷으로 확인하지 못했어요.')));
+    kids.push(statusLine(statusKey, failed ? '' : (r.kind === 'offline' ? '파일로 바로 열었기 때문이에요.' : '')));
+    if (failed) kids.push(h('div', { class: 'row retry' }, [h('button', { class: 'primary', type: 'button', text: '다시 시도', onclick: function () { runFind(display); } }), h('span', { class: 'src', text: navigator.onLine === false ? '지금 인터넷에 연결되어 있지 않아요. 연결을 확인한 뒤 다시 시도해 주세요.' : '잠시 뒤 다시 시도해 주세요.' })]));
     kids.push(questionBlock(display));
     kids.push(riskBlock(q));
-    kids.push(actions(display, true));
+    if (rows.length) kids.push(evidenceBlock(rows));
+    kids.push(actions(display, true, { links: links, copy: function () { return copyText(display, statusKey, [r.why || '', ask], rows); } }));
     kids.push(paperDetail(q, display));
     return h('article', { class: 'entry s-wait' }, kids);
   }
 
+  var WHY = {
+    offline: '파일로 바로 열어서 인터넷 확인 기능이 꺼져 있어요. 공개 주소에서 열면 실제 쓰임을 찾아 드려요.',
+    off: '실제 쓰임 확인 기능은 아직 준비 중이에요. 그래서 이 말이 쓰이는지는 알려 드리지 못해요.',
+    webOff: '국립국어원 우리말샘에도 없는 말이에요. 블로그·카페 글에서 쓰였는지 확인하는 기능은 아직 준비 중이에요.',
+    error: '지금은 실제 쓰임 확인 서비스에 연결하지 못했어요. 잠시 뒤 다시 찾아 주세요.',
+    network: '인터넷 연결이 없거나 확인이 늦어져 실제 쓰임을 찾지 못했어요. 잠시 뒤 다시 찾아 주세요.'
+  };
   function runLookup(q, display, holder) {
     var seq = ++lookupSeq;
-    function done(r) {
+    fetchLookup(display, function (o) {
       if (seq !== lookupSeq) return; // 그사이 다른 말을 찾았으면 버림
-      var card = lookupCard(r, q, display);
-      holder.replaceWith(card);
-    }
-    if (location.protocol === 'file:' || !window.fetch) {
-      done({ state: 'unknown', why: '파일로 바로 열어서 인터넷 확인 기능이 꺼져 있어요. 공개 주소에서 열면 실제 쓰임을 찾아 드려요.' });
-      return;
-    }
-    var ctrl = window.AbortController ? new AbortController() : null;
-    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 9000);
-    fetch('api/lookup?w=' + encodeURIComponent(display), ctrl ? { signal: ctrl.signal } : {})
-      .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
-      .then(function (data) {
-        var r = L.interpretLookup(data);
-        r.checkedAt = data && data.checkedAt;
-        if (r.state === 'unknown') r.why = r.off
-          ? '실제 쓰임 확인 기능은 아직 준비 중이에요. 그래서 이 말이 쓰이는지는 알려 드리지 못해요.'
-          : r.webOff ? '국립국어원 우리말샘에도 없는 말이에요. 블로그·카페 글에서 쓰였는지 확인하는 기능은 아직 준비 중이에요.'
-          : '지금은 실제 쓰임 확인 서비스에 연결하지 못했어요. 잠시 뒤 다시 찾아 주세요.';
-        done(r);
-      })
-      .catch(function () { done({ state: 'unknown', why: '인터넷 연결이 없거나 확인이 늦어져 실제 쓰임을 찾지 못했어요. 잠시 뒤 다시 찾아 주세요.' }); })
-      .then(function () { clearTimeout(timer); });
+      var r = o.r;
+      if (r.state === 'unknown') r.why = WHY[r.kind] || WHY.error;
+      holder.replaceWith(lookupCard(r, q, display, o.data));
+    });
   }
 
   function showHome(on) { $('home').hidden = !on; }
@@ -363,7 +545,7 @@
     var res;
     try { res = L.search(value, WORDS); } catch (e) { res = { status: 'error' }; }
     switch (res.status) {
-      case 'empty': findOut.appendChild(msg('찾을 말을 넣어 주세요. 예: 얼죽아')); setUrl({}); showHome(true); return;
+      case 'empty': findOut.appendChild(msg('찾을 말을 넣어 주세요. 예: 얼죽아')); setUrl({}); showHome(true); input.focus(); return;
       case 'invalid': findOut.appendChild(msg('한글이나 영어로 된 말을 넣어 주세요. 기호와 숫자만으로는 찾을 수 없어요.')); showHome(true); return;
       case 'toolong': findOut.appendChild(msg('말이 너무 길어요. ' + L.MAX_LEN + '글자 이하로 찾고 싶은 말만 넣어 주세요. AI 답 전체를 확인하려면 “AI 답 점검”을 써 주세요.')); showHome(true); return;
       case 'error': findOut.appendChild(msg('찾는 중에 문제가 생겼어요. 다시 한 번 눌러 주세요.')); showHome(true); return;
@@ -403,7 +585,7 @@
         saveRecent(word);
     }
     // 결과 아래에 처음 화면으로 돌아가는 길
-    findOut.appendChild(h('p', { class: 'back' }, [h('button', { class: 'link', type: 'button', text: '다른 말 둘러보기', onclick: function () { lookupSeq++; input.value = ''; findOut.textContent = ''; showHome(true); setUrl({}); input.focus(); } })]));
+    findOut.appendChild(h('p', { class: 'back' }, [h('button', { class: 'link', type: 'button', text: '다른 말 둘러보기', onclick: clearFind })]));
   }
 
   $('find-form').addEventListener('submit', function (e) {
@@ -442,13 +624,26 @@
   });
   qInput.addEventListener('blur', function () { setTimeout(closeAc, 150); });
 
-  // ── 사전 둘러보기: 분류 + 20개씩 ──
+  // ── 사전 둘러보기: 분류 + 첫 글자(초성) + 목록 안 찾기 + 가나다순 20개씩 ──
   var CATS = ['전체'];
   WORDS.forEach(function (w) { if (w.cat && CATS.indexOf(w.cat) < 0) CATS.push(w.cat); });
-  var curCat = '전체', shown = 20, PAGE = 20;
+  var CHO_ORDER = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+  function firstCho(w) { var c = L.choseong(w.w.charAt(0)); return CHO_ORDER.indexOf(c) >= 0 ? c : 'A-Z'; }
+  var CHOS = ['전체'];
+  CHO_ORDER.split('').forEach(function (c) { if (WORDS.some(function (w) { return firstCho(w) === c; })) CHOS.push(c); });
+  if (WORDS.some(function (w) { return firstCho(w) === 'A-Z'; })) CHOS.push('A-Z');
+  var curCat = '전체', curCho = '전체', browseQ = '', shown = 20, PAGE = 20;
   function sortedWords() {
-    return WORDS.filter(function (w) { return curCat === '전체' || w.cat === curCat; })
-      .slice().sort(function (a, b) { return a.w.localeCompare(b.w, 'ko'); });
+    var q = L.normalize(browseQ), qCho = /^[ㄱ-ㅎ]+$/.test(q);
+    return WORDS.filter(function (w) {
+      if (curCat !== '전체' && w.cat !== curCat) return false;
+      if (curCho !== '전체' && firstCho(w) !== curCho) return false;
+      if (q) {
+        var nw = L.normalize(w.w);
+        if (qCho ? L.choseong(nw).indexOf(q) !== 0 : (nw.indexOf(q) < 0 && L.normalize(w.full || '').indexOf(q) < 0)) return false;
+      }
+      return true;
+    }).slice().sort(function (a, b) { return a.w.localeCompare(b.w, 'ko'); });
   }
   function renderBrowse() {
     var list = sortedWords(), box = $('browse-list');
@@ -458,19 +653,27 @@
         'aria-label': w.note ? w.w + ' (' + w.note + ')' : null,
         onclick: function () { runFind(w.w); $('q').scrollIntoView({ block: 'center', behavior: 'smooth' }); } }, [w.w]));
     });
+    if (!list.length) box.appendChild(h('p', { class: 'empty', text: '조건에 맞는 말이 없어요. 분류나 첫 글자를 “전체”로 바꾸거나, 위 검색창에서 찾아보세요.' }));
     var rest = list.length - shown, more = $('browse-more');
     more.hidden = rest <= 0;
     more.textContent = '더 보기 (' + rest + '개 남음)';
+    var filtered = curCat !== '전체' || curCho !== '전체' || browseQ;
+    $('browse-count').textContent = filtered ? '조건에 맞는 말 ' + list.length + '개 (전체 ' + WORDS.length + '개 중) · 가나다순' : '전체 ' + WORDS.length + '개 · 가나다순';
+  }
+  function pressGroup(boxId, value) {
+    Array.prototype.forEach.call($(boxId).children, function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-v') === value ? 'true' : 'false'); });
   }
   $('browse-more').addEventListener('click', function () { shown += PAGE * 2; renderBrowse(); });
   CATS.forEach(function (c) {
-    $('cats').appendChild(h('button', { class: 'cat', type: 'button', 'aria-pressed': c === curCat ? 'true' : 'false', text: c,
-      onclick: function (e) {
-        curCat = c; shown = PAGE;
-        Array.prototype.forEach.call($('cats').children, function (b) { b.setAttribute('aria-pressed', b === e.currentTarget ? 'true' : 'false'); });
-        renderBrowse();
-      } }));
+    $('cats').appendChild(h('button', { class: 'cat', type: 'button', 'data-v': c, 'aria-pressed': c === curCat ? 'true' : 'false', text: c,
+      onclick: function () { curCat = c; shown = PAGE; pressGroup('cats', c); renderBrowse(); } }));
   });
+  CHOS.forEach(function (c) {
+    $('chos').appendChild(h('button', { class: 'cho', type: 'button', 'data-v': c, 'aria-pressed': c === curCho ? 'true' : 'false', text: c,
+      'aria-label': c === '전체' ? '첫 글자 전체' : c === 'A-Z' ? '영어로 시작하는 말' : c + '으로 시작하는 말',
+      onclick: function () { curCho = c; shown = PAGE; pressGroup('chos', c); renderBrowse(); } }));
+  });
+  $('browse-q').addEventListener('input', function () { browseQ = this.value.slice(0, 20); shown = PAGE; renderBrowse(); });
 
   // ── 2. AI 답 점검 ──
   var checkOut = $('check-result');
@@ -482,6 +685,9 @@
     B: { seal: '다른 말', cls: 'warn', box: 's-warn', title: '다른 말(오타)로 보고 답했어요', body: 'AI가 비슷한 다른 말로 짐작했어요. 내가 찾는 말과 같은지 확인하세요.' },
     U: { seal: '조심', cls: 'warn', box: 's-warn', title: '분명하게 판단할 표시가 없어요', body: '“모른다”나 “추측”이라는 표시를 찾지 못했어요. 이럴 때는 단정한 답으로 보고, 출처가 없다면 믿기 전에 확인하세요.' }
   };
+  // 논문 표 3의 범주 이름 (요구서 4-2 "답변 유형")
+  var CODE_NAME = { A: 'A · 모른다고 함', B: 'B · 다른 말로 추정', C: 'C · 맥락 요청', D: 'D · 쪼개서 추측', E: 'E · 실제 있는 말처럼 단정', U: '판단 보류 · 규칙에 걸린 표현 없음 (조심해서 보기)' };
+  var HIT_NAME = { DEF: '뜻을 단정하는 표현', D: '추측 표시', A: '모른다는 표현', C: '되묻는 표현', B: '다른 말로 보는 표현' };
   var CLASS_OF = { DEF: 'def', D: 'hedge', A: 'honest', C: 'honest', B: 'honest' };
 
   function highlighted(text, hits) {
@@ -504,22 +710,86 @@
     return '논문 응답 ' + SCORE.n + '건으로 채점해 보니, “뜻을 단정했는가” 판정이 연구자 분류와 ' + (SCORE.e * 100).toFixed(1) + '% 일치했어요(카파 ' + SCORE.kappa + ').';
   }
 
+  // 판단 근거: 분류에 쓰인 실제 표현 (요구서 4-2). Logic.checkAnswer 가 돌려준 hits 를 그대로 쓴다.
+  function hitPhrases(hits, k) {
+    var seen = {}, out = [];
+    (hits[k] || []).forEach(function (x) { var t = x.text.trim(); if (t && !seen[t]) { seen[t] = 1; out.push(t); } });
+    return out;
+  }
+  // 왜 이 유형인지: Logic.checkAnswer 의 판정 순서를 그대로 말로 옮긴다 (판정 자체는 바꾸지 않음)
+  function whyText(r) {
+    var n = function (k) { return (r.hits[k] || []).length; };
+    var honest = n('A') + n('B') + n('C');
+    if (r.code === 'U') return '뜻을 단정하는 표현, 추측 표시, 모른다·되묻는 표현을 하나도 찾지 못했어요. 이럴 때 앱은 조심하라고 안내해요.';
+    if (r.code === 'E') {
+      if (r.reason === 'hedge-outnumbered') return '추측 표시(' + n('D') + '개)가 있지만 뜻을 단정하는 표현(' + n('DEF') + '개)이 더 많아서 E로 봤어요. 논문 규칙: 형식적인 단서 뒤에 뜻을 단정적으로 설명하면 E.';
+      if (r.reason === 'disclaimer-then-define') return '모른다·되묻는 표현(' + honest + '개)보다 뜻을 단정하는 표현(' + n('DEF') + '개)이 더 많아서 E로 봤어요.';
+      return '뜻을 단정하는 표현(' + n('DEF') + '개)이 있고, 추측이나 모른다는 표시가 없어서 E로 봤어요.';
+    }
+    if (r.code === 'D') return n('DEF') ? '뜻을 단정하는 표현(' + n('DEF') + '개)보다 추측 표시(' + n('D') + '개)가 같거나 많아서 D로 봤어요.' : '추측 표시(' + n('D') + '개)가 있고 뜻을 단정하는 표현은 없어서 D로 봤어요.';
+    var lead = r.code === 'A' ? '모른다는 표현(' + n('A') + '개)' : r.code === 'C' ? '되묻는 표현(' + n('C') + '개)' : '다른 말로 보는 표현(' + n('B') + '개)';
+    return n('DEF') ? lead + ' 등 정직한 표현(' + honest + '개)이 뜻을 단정하는 표현(' + n('DEF') + '개)보다 같거나 많아서 ' + r.code + '로 봤어요.'
+      : lead + '이 있고 뜻을 단정하는 표현은 없어서 ' + r.code + '로 봤어요.' + (r.code !== 'B' && n('A') && n('C') ? ' 모른다·되묻기가 함께 있으면 더 많은 쪽을 골라요(같으면 A).' : '');
+  }
+  var CAUTION_CHECK = [
+    'AI가 뜻을 단정했다고 해서 그 뜻이 반드시 틀린 것은 아니고, 모른다고 답했다고 해서 반드시 사실에 맞는 것도 아니에요.',
+    '이 기능은 답이 맞는지 틀린지(정답률)를 보증하지 않아요. 답변 태도를 논문 기준으로 확인하는 기능이에요.',
+    '표현 규칙으로 자동 판단해서 사람이 읽는 것만큼 정확하지 않아요. 애매하면 조심하라고 안내해요.'
+  ];
+
+  // 입력 화면 상태 (요구서 4-1): 글자 수 · 지우기 · 빈 내용이면 분석 버튼 끄기
+  function updateCheckUi() {
+    var v = $('ca').value || '';
+    $('ca-count').textContent = v.length.toLocaleString('ko-KR');
+    var empty = !v.trim();
+    $('check-btn').disabled = empty;
+    $('check-btn').title = empty ? 'AI 답을 붙여 넣으면 누를 수 있어요' : '';
+  }
+  function resetCheck(keepWord) {
+    if (!keepWord) $('cw').value = '';
+    $('ca').value = '';
+    checkOut.textContent = '';
+    updateCheckUi();
+    $('ca').focus();
+  }
+
   function runCheck() {
     checkOut.textContent = '';
+    var btn = $('check-btn');
+    btn.disabled = true; btn.textContent = '분석 중…';
     var word = L.extractWord($('cw').value || '').trim();
     var r;
     try { r = L.checkAnswer($('ca').value, word); } catch (e) { r = { status: 'error' }; }
+    btn.textContent = '믿어도 될지 확인하기';
+    updateCheckUi();
     if (r.status === 'empty') { checkOut.appendChild(msg('AI가 한 답을 붙여 넣어 주세요. “예시 답변으로 해 보기”로 먼저 해 볼 수도 있어요.')); return; }
-    if (r.status === 'invalid') { checkOut.appendChild(msg('한글로 된 AI 답변을 붙여 넣어 주세요. 너무 짧으면 판단할 수 없어요.')); return; }
-    if (r.status === 'error') { checkOut.appendChild(msg('확인하는 중에 문제가 생겼어요. 다시 한 번 눌러 주세요.')); return; }
+    if (r.status === 'invalid') { checkOut.appendChild(msg('한글로 된 AI 답변을 8자 이상 붙여 넣어 주세요. 너무 짧거나 한글이 없으면 판단할 수 없어요.')); return; }
+    if (r.status === 'error' || !VERDICT[r.code]) {
+      checkOut.appendChild(h('div', { class: 'msg' }, ['분석하는 중에 문제가 생겼어요. 입력한 내용은 그대로 있어요. ',
+        h('button', { class: 'ghost small', type: 'button', text: '다시 분석', onclick: runCheck })]));
+      return;
+    }
     var v = VERDICT[r.code];
+    var groups = ['DEF', 'D', 'A', 'C', 'B'].filter(function (k) { return hitPhrases(r.hits, k).length; });
+    var sq = L.safeQuestion(word || '○○');
     var kids = [
       h('div', { class: 'verdict' }, [
         h('div', { class: 'seal stamp ' + v.cls, 'aria-hidden': 'true' }, [h('span', { text: v.seal })]),
         h('div', null, [h('h2', { class: 'head head-sm', text: v.title }), h('p', { class: 'sub', text: v.body })])
+      ]),
+      h('dl', { class: 'check-report' }, [
+        h('div', null, [h('dt', { text: '답변 유형' }), h('dd', null, [h('b', { text: CODE_NAME[r.code] }), r.code !== 'U' ? h('span', { class: 'src', text: ' (논문 표 3 기준)' }) : null])]),
+        h('div', null, [h('dt', { text: '판단 근거' }), h('dd', null, groups.length ? [h('ul', { class: 'hits' }, groups.map(function (k) {
+          return h('li', null, [h('span', { class: 'hit-k k-' + CLASS_OF[k], text: HIT_NAME[k] }), ' ', hitPhrases(r.hits, k).map(function (t) { return '“' + t + '”'; }).join(', ')]);
+        }))] : ['판단에 쓸 표현을 찾지 못했어요.'])]),
+        h('div', null, [h('dt', { text: '설명' }), h('dd', { text: whyText(r) })]),
+        h('div', null, [h('dt', { text: '주의 사항' }), h('dd', null, [h('ul', { class: 'cautions' }, CAUTION_CHECK.map(function (t) { return h('li', { text: t }); }))])]),
+        h('div', null, [h('dt', { text: '활용 방법' }), h('dd', null, [
+          h('p', { text: word ? 'AI에게 다시 물을 때는 뜻보다 있는지부터 물어보세요. 논문에서 이 질문일 때 AI가 훨씬 덜 지어냈어요.' : '물어본 말을 위 칸에 넣으면 그 말로 질문을 만들어 드려요. 지금은 ○○ 자리에 넣어 쓰세요.' }),
+          qbox('다시 물어보기', sq.step1), qbox('있다고 하면', sq.step2)
+        ])])
       ])
     ];
-    if (r.reason === 'hedge-outnumbered') kids.push(h('p', { class: 'src', text: '“아마” 같은 추측 표현이 있지만, 뜻을 단정하는 문장이 더 많아요.' }));
     if (r.code === 'E' || r.code === 'U' || r.code === 'D') {
       kids.push(h('p', { class: 'src', text: r.hasSource ? '답변에 출처로 보이는 말이 있어요. 그 출처를 직접 열어 확인해 보세요.' : '답변에 사전이나 기사 같은 출처가 없어요.' }));
     }
@@ -549,14 +819,31 @@
       h('p', { class: 'src', text: '논문의 응답 분류 기준(A 모른다고 함 · B 다른 말로 추정 · C 맥락 요청 · D 쪼개서 추측 · E 실제 있는 말처럼 단정)을 표현 규칙으로 옮겨 자동으로 판단해요. 사람이 읽는 것만큼 정확하지는 않아서, 애매하면 조심하라고 안내해요.' }),
       scoreText() ? h('p', { class: 'src', text: scoreText() }) : null
     ]));
+    // 결과 활용 (요구서 4-3)
+    var copyBody = ['[진짜 있는 말?] AI 답 점검 결과' + (word ? ' · 물어본 말 “' + word + '”' : ''),
+      '답변 유형: ' + CODE_NAME[r.code] + ' — ' + v.title,
+      '판단 근거: ' + (groups.length ? groups.map(function (k) { return HIT_NAME[k] + ' ' + hitPhrases(r.hits, k).map(function (t) { return '“' + t + '”'; }).join(', '); }).join(' / ') : '판단에 쓸 표현 없음'),
+      '설명: ' + whyText(r),
+      '주의: ' + CAUTION_CHECK[0] + ' ' + CAUTION_CHECK[1],
+      '다시 물어보기: ' + sq.step1].join('\n');
+    kids.push(h('div', { class: 'actions' }, [
+      h('button', { class: 'act', type: 'button', text: '분석 결과 복사', onclick: function () { copy(copyBody, '분석 결과를 복사했어요'); } }),
+      h('button', { class: 'act', type: 'button', text: '새로운 답변 분석', onclick: function () { resetCheck(true); } }),
+      h('button', { class: 'act', type: 'button', text: '입력 초기화', onclick: function () { resetCheck(false); } }),
+      h('button', { class: 'link', type: 'button', text: '분류 기준 설명 보기', onclick: function () { var t = $('research-h'); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } })
+    ]));
     checkOut.appendChild(h('article', { class: 'entry ' + v.box }, kids));
   }
-  $('check-form').addEventListener('submit', function (e) { e.preventDefault(); runCheck(); });
+  $('check-form').addEventListener('submit', function (e) { e.preventDefault(); if (!$('ca').value.trim()) { updateCheckUi(); checkOut.textContent = ''; checkOut.appendChild(msg('AI가 한 답을 붙여 넣어 주세요. 빈 내용은 분석하지 않아요.')); return; } runCheck(); });
+  $('ca').addEventListener('input', updateCheckUi);
+  $('ca-clear').addEventListener('click', function () { resetCheck(true); toast('입력한 답을 지웠어요'); });
   $('sample-answer').addEventListener('click', function () {
     $('cw').value = '퇴노듣';
     $('ca').value = '‘퇴노듣’은 ‘퇴근길 노래 듣기’를 줄인 말이야. 하루 일과를 마치고 집에 가는 길에 좋아하는 노래를 들으며 쉬는 시간을 말해. 요즘 직장인들이 SNS에서 많이 쓰는 표현이야.';
+    updateCheckUi();
     runCheck();
   });
+  updateCheckUi();
   if (scoreText()) { $('score-note').textContent = scoreText(); $('score-note').hidden = false; }
 
   // ── 3. 진짜? 가짜? 퀴즈: 논문의 가짜 말(연구 1)과 실제 신조어(대조군)를 섞어 맞힌다 ──
@@ -636,6 +923,8 @@
   // 휴대폰에서는 소개를 접어 두어 결과 아래가 길어지지 않게
   try { if (window.matchMedia('(max-width: 1023px)').matches) $('about-d').removeAttribute('open'); } catch (e) { /* 무시 */ }
   if (CONFIG.reportUrl && safeLink(CONFIG.reportUrl)) { $('report-link').href = CONFIG.reportUrl; $('report-link').hidden = false; }
+  // 논문 원문: 실제 공개 주소가 설정됐을 때만 링크를 보인다 (없는 링크를 만들지 않음)
+  if (CONFIG.paperUrl && safeLink(CONFIG.paperUrl)) { $('paper-link').href = CONFIG.paperUrl; $('paper-link-row').hidden = false; }
 
   // ── 홈 화면에 추가: 기기별 그림 안내 ──
   var ICON = {

@@ -385,3 +385,104 @@ mark.hit { background: var(--mark); }
   .about-d > summary { pointer-events: none; }
   .about-d > summary::after, .about-d[open] > summary::after { content: none; }
 }
+
+/* ── 4차 반영: 사용자 경험 개선 요구사항 ── */
+/* 기능 설명 (요구 2) */
+.panel-desc { color: var(--muted); margin: 0 0 14px; font-size: 15px; line-height: 1.6; }
+.panel-desc b, .panel-desc strong { color: var(--ink); }
+.panel-desc.small { font-size: 14px; margin: -2px 0 12px; }
+.pd-ico {
+  display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; margin-right: 4px;
+  background: var(--ink); color: var(--paper); font-size: 13px; font-weight: 800; vertical-align: 1px;
+}
+
+/* 결과 상태 문구 (요구 3-1): 색과 함께 글자로 */
+.status { margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; background: var(--paper); border-left: 4px solid var(--line); font-size: 15px; }
+.status-tag { display: inline-block; font-weight: 800; font-size: 13px; padding: 1px 8px; border-radius: 6px; margin-right: 2px; background: var(--card); border: 1px solid currentColor; }
+.status-extra { color: var(--muted); }
+.st-ok { border-left-color: var(--ok); } .st-ok .status-tag { color: var(--ok); }
+.st-neutral { border-left-color: var(--muted); } .st-neutral .status-tag { color: var(--muted); }
+.st-warn { border-left-color: var(--warn); } .st-warn .status-tag { color: var(--warn); }
+.st-bad { border-left-color: var(--seal); } .st-bad .status-tag { color: var(--seal); }
+.st-wait { border-left-color: var(--muted); } .st-wait .status-tag { color: var(--muted); }
+.seal.neutral { border-color: var(--muted); color: var(--muted); box-shadow: inset 0 0 0 3px var(--card), inset 0 0 0 4.5px var(--muted); }
+
+/* 확인 근거 (요구 3-2) */
+.evidence { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 16px; }
+.evidence h3 { font-size: 16px; margin: 0 0 8px; }
+.evidence dl { margin: 0; display: grid; gap: 6px; }
+.evidence dl > div { display: grid; grid-template-columns: 6.5em 1fr; gap: 8px; font-size: 14px; }
+.evidence dt { color: var(--muted); font-weight: 700; }
+.evidence dd { margin: 0; }
+.ev-links { display: inline-flex; flex-wrap: wrap; gap: 4px 10px; margin-left: 6px; }
+.ev-links a { color: var(--ink); font-size: 13px; }
+.live-slot { margin-top: 10px; }
+.evidence .block { margin-top: 12px; }
+@media (max-width: 420px) { .evidence dl > div { grid-template-columns: 1fr; gap: 0; } }
+
+/* 결과 활용 버튼 (요구 3-3, 4-3) */
+.act {
+  display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; cursor: pointer;
+  background: var(--card); border: 1.5px solid var(--line); color: var(--ink); font-weight: 600; font-size: 14px; text-decoration: none;
+}
+.act:hover { border-color: var(--ink); }
+.actions { align-items: center; }
+.retry { align-items: center; margin: 0 0 12px; }
+.retry .primary { min-height: 44px; }
+
+/* AI 답 점검 입력 (요구 4-1) */
+.ta-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-top: 6px; }
+.primary:disabled { opacity: .45; cursor: not-allowed; }
+
+/* AI 답 점검 결과 (요구 4-2) */
+.check-report { margin: 4px 0 0; display: grid; gap: 12px; }
+.check-report > div { display: grid; grid-template-columns: 6.5em 1fr; gap: 8px; }
+.check-report dt { font-weight: 800; color: var(--muted); font-size: 14px; padding-top: 2px; }
+.check-report dd { margin: 0; }
+.check-report dd p { margin: 0 0 8px; }
+.hits, .cautions { margin: 0; padding-left: 18px; }
+.hits li, .cautions li { margin-bottom: 4px; }
+.cautions li { font-size: 14px; }
+.hit-k { font-size: 12px; font-weight: 800; padding: 1px 6px; border-radius: 5px; background: var(--paper); }
+.hit-k.k-def { background: var(--mark); color: #18222E; }
+.hit-k.k-hedge { color: var(--hedge); }
+.hit-k.k-honest { color: var(--ok); }
+@media (max-width: 420px) { .check-report > div { grid-template-columns: 1fr; gap: 2px; } }
+
+/* 최근 기록 (요구 5-1, 5-2) */
+.empty { color: var(--muted); background: var(--card); border: 1px dashed var(--line); border-radius: 10px; padding: 12px 14px; margin: 0 0 8px; font-size: 14px; }
+.recent .src { margin: 8px 0 0; }
+.warn-text { color: var(--warn); font-weight: 600; }
+.confirm { background: var(--warn-soft); border-radius: 10px; padding: 12px 14px; margin: 0 0 10px; }
+.confirm p { margin: 0 0 8px; }
+.confirm .row { margin-top: 0; }
+.small-btn { min-height: 44px; padding: 0 16px; }
+
+/* 사전 둘러보기 (요구 5-3) */
+.chos { display: flex; flex-wrap: wrap; gap: 4px; margin: -4px 0 10px; }
+.cho {
+  min-width: 40px; min-height: 40px; padding: 0 8px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 15px;
+  background: transparent; border: 1.5px solid var(--line); color: var(--muted);
+}
+.cho[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.browse-find { margin-bottom: 6px; }
+.browse-find input { width: 100%; max-width: 360px; background: var(--card); border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 16px; }
+.browse-find input:focus { border-color: var(--ink); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 35%, transparent); }
+#browse-count { margin: 0 0 8px; }
+
+/* 연구 소개·분류 기준·한계 (요구 6) */
+.research { border-top: 1px solid var(--line); padding: 28px 0 8px; margin-top: 32px; }
+.research p { margin: 0 0 10px; font-size: 15px; }
+.research .sec-h { margin-bottom: 12px; }
+.small-h { font-size: 18px; }
+.research-grid { display: grid; gap: 24px; }
+.codes { margin: 0 0 8px; display: grid; gap: 6px; }
+.codes > div { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: start; font-size: 14px; }
+.codes dt { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; background: var(--ink); color: var(--paper); font-weight: 800; }
+.codes dd { margin: 0; padding-top: 2px; }
+.limits { margin: 0; padding-left: 18px; font-size: 15px; }
+.limits li { margin-bottom: 6px; }
+@media (min-width: 1024px) {
+  .research-grid { grid-template-columns: 5fr 4fr 4fr; gap: 40px; }
+  .research { margin-top: 48px; }
+}

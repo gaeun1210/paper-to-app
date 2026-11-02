@@ -46,6 +46,7 @@
   </div>
 
   <section id="panel-find" role="tabpanel" aria-labelledby="tab-find">
+    <p class="panel-desc"><span class="pd-ico" aria-hidden="true">⌕</span> 모르는 말을 넣으면 <b>사전에 실렸는지</b>, <b>온라인에 쓰인 흔적이 있는지</b> 확인하고 그 근거를 보여 드려요. 낱말 하나만 넣고 “찾기”를 누르세요.</p>
     <form id="find-form" class="field" autocomplete="off" novalidate>
       <div class="combo">
         <label for="q" class="visually-hidden">찾을 말</label>
@@ -67,12 +68,22 @@
     <div id="find-result" class="result" aria-live="polite"></div>
 
     <div id="home" class="home">
-      <div id="recent" class="recent" hidden>
+      <div id="recent" class="recent">
         <div class="sec-head">
           <h2 class="sec-h">최근 찾은 말</h2>
-          <button type="button" class="link" id="recent-clear">모두 지우기</button>
+          <button type="button" class="link" id="recent-clear" aria-expanded="false" aria-controls="recent-confirm" hidden>모두 지우기</button>
         </div>
+        <div id="recent-confirm" class="confirm" role="alertdialog" aria-labelledby="recent-confirm-t" hidden>
+          <p id="recent-confirm-t">이 기기에 저장된 최근 찾은 말을 <b>모두</b> 지울까요? 지운 뒤에는 되돌릴 수 없어요.</p>
+          <div class="row">
+            <button type="button" class="primary small-btn" id="recent-confirm-yes">모두 지우기</button>
+            <button type="button" class="ghost" id="recent-confirm-no">취소</button>
+          </div>
+        </div>
+        <p id="recent-empty" class="empty" hidden>아직 검색한 단어가 없습니다. 궁금한 단어를 검색해 보세요.</p>
         <div id="recent-list" class="sugg"></div>
+        <p class="src">이 기기의 브라우저에만 최대 8개까지 저장돼요. 서버로 보내지 않고, “모두 지우기”는 이 기기의 목록만 지워요.</p>
+        <p id="recent-fail" class="src warn-text" role="status" hidden>이 브라우저에서는 기록을 저장할 수 없어요(개인 정보 보호 모드 등). 찾은 말이 목록에 남지 않아요.</p>
       </div>
 
       <div class="browse">
@@ -80,7 +91,14 @@
           <h2 class="sec-h">사전에 있는 말 둘러보기</h2>
           <span class="legend-dot"><span class="dot" aria-hidden="true"></span> 쓸 때 주의할 말</span>
         </div>
+        <p class="panel-desc small">이 앱 사전에 정리된 말을 분류·첫 글자로 살펴보고, 눌러서 뜻을 확인해요. 가나다순으로 보여 드려요.</p>
         <div id="cats" class="cats" role="group" aria-label="분류 고르기"></div>
+        <div id="chos" class="chos" role="group" aria-label="첫 글자 초성으로 보기"></div>
+        <div class="browse-find">
+          <label for="browse-q" class="visually-hidden">사전 목록에서 찾기</label>
+          <input id="browse-q" type="search" maxlength="20" placeholder="목록에서 찾기 (예: 갓, ㄲ)" autocomplete="off">
+        </div>
+        <p id="browse-count" class="src" aria-live="polite"></p>
         <div id="browse-list" class="sugg"></div>
         <button type="button" class="ghost more-btn" id="browse-more" hidden></button>
       </div>
@@ -88,15 +106,19 @@
   </section>
 
   <section id="panel-check" role="tabpanel" aria-labelledby="tab-check" hidden>
-    <p class="hint">다른 AI에게 신조어 뜻을 물어 받은 답을 붙여 넣으세요. 그 답이 뜻을 <strong>단정했는지</strong>, <strong>추측이라고 밝혔는지</strong>, <strong>모른다고 했는지</strong> 논문의 분류 기준으로 알려 드려요.</p>
+    <p class="panel-desc"><span class="pd-ico" aria-hidden="true">✓</span> 다른 AI의 답을 붙여 넣으면, 그 답이 뜻을 <strong>단정했는지</strong>, <strong>추측이라고 밝혔는지</strong>, <strong>모른다고 했는지</strong> 논문의 분류 기준(A~E)으로 알려 드려요. 답이 <b>맞는지 틀린지</b>를 가리는 기능은 아니에요.</p>
     <p id="score-note" class="hint small" hidden></p>
     <form id="check-form" autocomplete="off" novalidate>
       <label for="cw" class="lbl">물어본 말 <span class="opt">(넣으면 더 정확하게 봐요)</span></label>
       <input id="cw" type="text" maxlength="60" placeholder="예: 퇴노듣">
       <label for="ca" class="lbl">AI가 한 답</label>
-      <textarea id="ca" rows="6" maxlength="6000" placeholder="AI 답변을 그대로 붙여 넣으세요"></textarea>
+      <textarea id="ca" rows="6" maxlength="6000" aria-describedby="ca-meta" placeholder="다른 AI에게 존재 여부가 불분명한 단어의 뜻을 물어본 뒤, AI가 답변한 내용을 여기에 붙여 넣어 주세요."></textarea>
+      <div class="ta-meta" id="ca-meta">
+        <span><span id="ca-count">0</span> / 6,000자 · 앞 4,000자까지 분석해요</span>
+        <button type="button" class="link" id="ca-clear">입력 지우기</button>
+      </div>
       <div class="row">
-        <button type="submit" class="primary">믿어도 될지 확인하기</button>
+        <button type="submit" class="primary" id="check-btn" disabled>믿어도 될지 확인하기</button>
         <button type="button" class="ghost" id="sample-answer">예시 답변으로 해 보기</button>
       </div>
       <p class="hint small">붙여 넣은 답은 어디에도 보내거나 저장하지 않아요. 개인적인 대화가 섞여 있다면 지우고 넣어 주세요.</p>
@@ -105,6 +127,7 @@
   </section>
 
   <section id="panel-quiz" role="tabpanel" aria-labelledby="tab-quiz" hidden>
+    <p class="panel-desc"><span class="pd-ico" aria-hidden="true">?</span> 논문에서 만든 가짜 말과 실제 신조어를 섞은 10문제예요. 생김새만으로 구분하기가 얼마나 어려운지 직접 겪어 봐요.</p>
     <div id="quiz"></div>
   </section>
  </div>
@@ -121,11 +144,45 @@
       <p class="src" id="f-basis"></p>
       <details class="more">
         <summary>생김새 판정 규칙은 어떻게 만들었나요?</summary>
-        <p>한글 세 글자 말의 글자 하나하나가 일상 낱말에 자주 나오는 글자인지 봅니다. 모두 흔한 글자면 “줄임말처럼 생긴 말”, 끝 글자가 -족·-템·-력·-짤·-러이면 “아는 말에 꼬리를 붙인 말”, 흔하지 않은 글자가 섞이면 “낯선 글자가 섞인 말”로 봅니다. 이 규칙으로 논문에 쓴 가짜 단어 70개를 판정해 보니 68개가 논문과 같은 유형으로 나왔어요(다른 것: 똬리력, 퓨겸다).</p>
+        <p>한글 세 글자 말의 글자 하나하나가 일상 낱말에 자주 나오는 글자인지 봅니다. 모두 흔한 글자면 “줄임말처럼 생긴 말”, 끝 글자가 -족·-템·-력·-짤·-러이면 “아는 말에 꼬리를 붙인 말”, 흔하지 않은 글자가 섞이면 “낯선 글자가 섞인 말”로 봅니다. 이 규칙을 <b>논문에서 쓴 가짜 단어 70개</b>(연구 1의 30개 + 연구 2의 40개)에 적용하면 68개가 논문에서 정한 유형과 같았어요(다른 것: 똬리력, 퓨겸다). 이 결과는 그 70개 단어에 대한 것이고, 다른 신조어에서의 정확도를 뜻하지 않아요.</p>
       </details>
     </details>
   </aside>
 </main>
+
+<section class="research" aria-labelledby="research-h">
+  <div class="wrap research-grid">
+    <div>
+      <h2 id="research-h" class="sec-h">연구 소개</h2>
+      <p><b>주제</b> · AI는 모르는 신조어 앞에서 모른다고 말하는가 (김가은, 2026, SKT ALEPH 과정)</p>
+      <p><b>목적</b> · 일부러 만든 가짜 신조어를 세 AI(Claude·ChatGPT·Gemini, 각 회사 API)에 물어, 없는 말의 뜻을 지어내는지와 어떤 조건에서 더 지어내는지 확인했어요.</p>
+      <p><b>실험 대상</b> · 연구 1: 가짜 단어 30개 + 실제 신조어 10개, 응답 240건. 연구 2: 새 가짜 단어 40개 + 실제 신조어 10개, 응답 300건(2026년 10월 28~29일 수집). 응답은 연구자가 모델·조건을 가린 채 A~E로 분류했어요.</p>
+      <p><b>연구 결과와 이 서비스의 관계</b> · 앱에 나오는 비율은 모두 <b>이 실험 조건</b>(한글 세 글자 가짜 단어, 세 AI의 API, 두 가지 질문)의 결과예요. 앱이 다른 단어·다른 AI·다른 시점에서 같은 비율을 보장하지는 않아요. 앱은 그 결과를 바탕으로 “있는지부터 확인하는 습관”을 돕는 도구예요.</p>
+      <p id="paper-link-row" hidden><a id="paper-link" target="_blank" rel="noopener">논문 원문 보기 ↗</a></p>
+    </div>
+    <div>
+      <h3 class="sec-h small-h">논문의 답변 분류 기준 (A~E)</h3>
+      <dl class="codes">
+        <div><dt>A</dt><dd><b>모른다고 함</b> · 모르거나 확인할 수 없다고 말해요.</dd></div>
+        <div><dt>B</dt><dd><b>다른 말로 추정</b> · 오타나 다른 단어로 보고 그 단어를 설명해요.</dd></div>
+        <div><dt>C</dt><dd><b>맥락 요청</b> · 어디서 본 말인지 되물어요.</dd></div>
+        <div><dt>D</dt><dd><b>쪼개서 추측</b> · 단어를 쪼개 뜻을 짐작하되, 추측이라고 밝혀요.</dd></div>
+        <div><dt>E</dt><dd><b>실제 있는 말처럼 단정</b> · 불확실하다는 표시 없이 뜻을 설명해요.</dd></div>
+      </dl>
+      <p class="src">논문 표 3(PhantomBench의 분류를 한국어에 맞게 고친 기준). “AI 답 점검”은 이 기준을 표현 규칙으로 옮겨 자동으로 판단해요.</p>
+    </div>
+    <div>
+      <h3 class="sec-h small-h">이 서비스의 한계</h3>
+      <ul class="limits">
+        <li>모든 신조어와 인터넷 표현을 찾을 수 있는 것은 아니에요. 사용 흔적은 <b>네이버 블로그·카페</b> 글만 살펴봐요.</li>
+        <li>사전에 실리지 않은 표현도 실제로 쓰일 수 있어요.</li>
+        <li>검색 결과가 없다는 것이 그 단어가 <b>없다는 증명</b>은 아니에요.</li>
+        <li>사용 흔적이 있다는 것이 <b>공식적인 단어</b>라는 뜻은 아니에요.</li>
+        <li>AI 답의 <b>유형을 분류하는 것</b>과 답이 <b>사실인지 검증하는 것</b>은 달라요. 이 앱은 앞의 것만 해요.</li>
+      </ul>
+    </div>
+  </div>
+</section>
 
 <footer class="foot">
   <div class="wrap foot-grid">
