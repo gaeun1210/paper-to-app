@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>논문 이야기 · 진짜 있는 말?</title>
+<meta name="description" content="‘진짜 있는 말?’의 근거 논문 요약: 모르는 신조어를 AI에게 묻기 전에, 그 말이 진짜 쓰이는지부터 확인해 주는 해석기. 쓰이는 말이면 뜻과 출처를, 흔적이 없으면 AI에게 안전하게 묻는 법을 알려 줍니다.">
+<meta name="theme-color" content="#1D5BEA">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<!-- 링크 공유 미리보기. 공개 주소가 생기면 og:image 를 그 주소로 바꿔 주세요 (README 참고) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="진짜 있는 말?">
+<meta property="og:title" content="진짜 있는 말? · 정직한 신조어 해석기">
+<meta property="og:description" content="모르는 신조어, AI에게 묻기 전에 진짜 쓰이는 말인지부터 확인하세요.">
+<meta property="og:image" content="https://paper-to-app.vercel.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a class="logo" href="./" aria-label="Paper to App 처음 화면"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span>Paper to App</span></a>
+    <button type="button" class="menu-btn" id="menu-btn" aria-expanded="false" aria-controls="nav" aria-label="메뉴 열기"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <nav id="nav" class="nav" aria-label="주요 메뉴">
+      <ul>
+        <li><a href="./#home" data-view="find" data-scroll="top">홈</a></li>
+        <li><a href="./#find" data-view="find" data-scroll="q">말 찾기</a></li>
+        <li><a href="./#browse" data-view="find" data-scroll="browse">사전 둘러보기</a></li>
+        <li><a href="./#check" data-view="check">AI 답 점검</a></li>
+        <li><a href="./#quiz" data-view="quiz">퀴즈</a></li>
+        <li><a href="#results">연구 결과</a></li>
+        <li><a href="#intro">연구 소개</a></li>
+        <li class="nav-info"><a href="#limits" aria-label="이용 안내와 서비스의 한계" title="이용 안내와 서비스의 한계"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.2"/></svg><span class="nav-info-t">이용 안내</span></a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<section class="hero hero-sub" id="top">
+  <div class="wrap hero-in">
+    <p class="kicker">논문 이야기</p>
+    <h1 class="brand brand-sub">AI는 모르는 신조어 앞에서 <span class="hl">모른다고 말할까?</span></h1>
+    <p class="lead">“진짜 있는 말?”은 이 연구의 결과로 만든 앱이에요. 연구가 무엇을 밝혔고, 앱이 그 결과를 어떻게 쓰는지만 짧게 정리했어요.</p>
+    <p class="paper"><cite>「AI는 모르는 신조어 앞에서 모른다고 말하는가 — 한국어 가짜 신조어의 형성 방식과 AI의 뜻 지어내기」</cite> (김가은, 2026, SKT ALEPH 과정) <span id="paper-link-row" hidden>· <a id="paper-link" target="_blank" rel="noopener">논문 원문 보기 ↗</a></span></p>
+    <p><a class="back-link" href="./">← 말 찾기로 돌아가기</a></p>
+  </div>
+</section>
+
+<main id="main" class="wrap paper-page">
+  <section class="p-sec" id="intro" aria-labelledby="intro-h">
+    <h2 id="intro-h" class="sec-h">연구 소개</h2>
+    <dl class="p-intro">
+      <div><dt>궁금했던 것</dt><dd>AI는 없는 신조어를 물으면 “모른다”고 할까, 뜻을 지어낼까? 어떤 말에서 더 지어낼까?</dd></div>
+      <div><dt>한 방법</dt><dd>일부러 만든 가짜 신조어를 세 AI(Claude·ChatGPT·Gemini, 각 회사 API)에 “무슨 뜻이야?”와 “실제로 있어?” 두 가지로 묻고, 답을 A~E로 나눴어요.</dd></div>
+      <div><dt>실험 대상</dt><dd>가짜 단어 70개와 실제 신조어 20개, AI 응답 540건 (2026년 10월 28~29일 수집)</dd></div>
+    </dl>
+  </section>
+
+  <section class="p-sec results" id="results" aria-labelledby="results-h">
+    <h2 id="results-h" class="sec-h">핵심 결과</h2>
+    <p class="results-lead">모든 막대는 같은 축(0~100%)과 같은 단위(뜻을 단정한 응답 비율)로 그렸어요.</p>
+    <dl class="stats">
+      <div class="stat"><dt>실험한 가짜 단어</dt><dd><b>70</b>개</dd><p>연구 1: 30개 · 연구 2: 40개 (+ 실제 신조어 20개)</p></div>
+      <div class="stat"><dt>수집한 AI 응답</dt><dd><b>540</b>건</dd><p>연구 1: 240건 · 연구 2: 300건</p></div>
+      <div class="stat"><dt>비교한 AI</dt><dd><b>3</b>개</dd><p>Claude · ChatGPT · Gemini (각 회사 API)</p></div>
+      <div class="stat"><dt>“단정(E)인가” 분류 일치</dt><dd><b>528</b>/540건</dd><p>연구자와 AI 분류자가 따로 분류 (연구 1: 234/240 · 연구 2: 294/300)</p></div>
+    </dl>
+    <div class="charts">
+    <figure class="chart" id="ch-ask">
+      <figcaption><h3 class="chart-h">질문 방식에 따라</h3><p class="src">가짜 줄임말에 대한 응답 · 연구 1·2 합산 · 질문별 90건</p></figcaption>
+      <div class="cbars" role="img" aria-label="질문 방식에 따라: “무슨 뜻이야?” 47%, “실제로 있어?” 3%">
+        <div class="cbar"><span class="cb-l">“무슨 뜻이야?”</span><span class="cb-track"><span class="cb-fill" style="width:46.7%"></span></span><span class="cb-v">47%</span></div>
+        <div class="cbar"><span class="cb-l">“실제로 있어?”</span><span class="cb-track"><span class="cb-fill" style="width:3.3%"></span></span><span class="cb-v">3%</span></div>
+        <div class="c-axis" aria-hidden="true"><span>0%</span><span>50%</span><span>100%</span></div>
+      </div>
+      <p class="chart-sum">같은 가짜 말이라도 “실제로 있어?”라고 물으면 AI가 뜻을 단정한 비율이 크게 줄었어요.</p>
+      <table class="ctable">
+        <caption class="visually-hidden">질문 방식별 뜻을 단정한 응답 비율</caption>
+        <thead><tr><th scope="col">구분</th><th scope="col">비율</th><th scope="col">건수</th><th scope="col">자료</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">“무슨 뜻이야?”</th><td>46.7%</td><td>42/90건</td><td>연구 1·2</td></tr>
+          <tr><th scope="row">“실제로 있어?”</th><td>3.3%</td><td>3/90건</td><td>연구 1·2</td></tr>
+        </tbody>
+      </table>
+    </figure>
+    <figure class="chart" id="ch-shape">
+      <figcaption><h3 class="chart-h">말의 생김새에 따라</h3><p class="src">두 질문 방식 합산 · 생김새별 가짜 단어에 대한 응답</p></figcaption>
+      <div class="cbars" role="img" aria-label="말의 생김새에 따라: 줄임말처럼 생긴 말 25%, 아는 말에 꼬리를 붙인 말 30%, 낯선 글자가 섞인 말 3.3%">
+        <div class="cbar"><span class="cb-l">줄임말처럼 생긴 말</span><span class="cb-track"><span class="cb-fill" style="width:25.0%"></span></span><span class="cb-v">25%</span></div>
+        <div class="cbar"><span class="cb-l">아는 말에 꼬리를 붙인 말</span><span class="cb-track"><span class="cb-fill" style="width:30.0%"></span></span><span class="cb-v">30%</span></div>
+        <div class="cbar"><span class="cb-l">낯선 글자가 섞인 말</span><span class="cb-track"><span class="cb-fill" style="width:3.3%"></span></span><span class="cb-v">3.3%</span></div>
+        <div class="c-axis" aria-hidden="true"><span>0%</span><span>50%</span><span>100%</span></div>
+      </div>
+      <p class="chart-sum">실제 신조어처럼 만든 말(줄임말·꼬리 붙인 말)은 낯선 글자가 섞인 말보다 더 자주 실제 있는 말처럼 풀이됐어요.</p>
+      <table class="ctable">
+        <caption class="visually-hidden">생김새별 뜻을 단정한 응답 비율</caption>
+        <thead><tr><th scope="col">구분</th><th scope="col">비율</th><th scope="col">건수</th><th scope="col">자료</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">줄임말처럼 생긴 말</th><td>25.0%</td><td>45/180건</td><td>연구 1·2, 단어 30개</td></tr>
+          <tr><th scope="row">아는 말에 꼬리를 붙인 말</th><td>30.0%</td><td>18/60건</td><td>연구 1만, 단어 10개</td></tr>
+          <tr><th scope="row">낯선 글자가 섞인 말</th><td>3.3%</td><td>6/180건</td><td>연구 1·2, 단어 30개</td></tr>
+        </tbody>
+      </table>
+    </figure>
+    <figure class="chart" id="ch-ai">
+      <figcaption><h3 class="chart-h">AI마다 달라요</h3><p class="src">가짜 줄임말에 대한 응답 · 연구 1·2 합산 · 두 질문 합산 · AI별 60건</p></figcaption>
+      <div class="cbars" role="img" aria-label="AI마다 달라요: Claude 2%, ChatGPT 23%, Gemini 50%">
+        <div class="cbar"><span class="cb-l">Claude</span><span class="cb-track"><span class="cb-fill" style="width:1.7%"></span></span><span class="cb-v">2%</span></div>
+        <div class="cbar"><span class="cb-l">ChatGPT</span><span class="cb-track"><span class="cb-fill" style="width:23.3%"></span></span><span class="cb-v">23%</span></div>
+        <div class="cbar"><span class="cb-l">Gemini</span><span class="cb-track"><span class="cb-fill" style="width:50.0%"></span></span><span class="cb-v">50%</span></div>
+        <div class="c-axis" aria-hidden="true"><span>0%</span><span>50%</span><span>100%</span></div>
+      </div>
+      <p class="chart-sum">세 AI의 차이가 컸어요. Claude는 거의 단정하지 않았고 Gemini는 절반을 단정했어요.</p>
+      <table class="ctable">
+        <caption class="visually-hidden">AI별 뜻을 단정한 응답 비율</caption>
+        <thead><tr><th scope="col">구분</th><th scope="col">비율</th><th scope="col">건수</th><th scope="col">자료</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Claude</th><td>1.7%</td><td>1/60건</td><td>각 회사 API</td></tr>
+          <tr><th scope="row">ChatGPT</th><td>23.3%</td><td>14/60건</td><td>각 회사 API</td></tr>
+          <tr><th scope="row">Gemini</th><td>50.0%</td><td>30/60건</td><td>각 회사 API</td></tr>
+        </tbody>
+      </table>
+    </figure>
+    </div>
+    <p class="src">“단정”은 분류 E(불확실하다는 표시 없이 뜻을 설명)예요. 실험 조건에 대한 결과이고, 이 앱의 정확도나 다른 단어·다른 시점의 결과를 보장하지 않아요.</p>
+  </section>
+
+  <section class="p-sec" id="use" aria-labelledby="use-h">
+    <h2 id="use-h" class="sec-h">앱이 이 결과를 쓰는 방법</h2>
+    <ol class="use-list">
+      <li><b>있는지부터 묻는 질문</b> · “실제로 있어?”라고 물을 때 AI가 훨씬 덜 지어냈어요. 그래서 말 찾기 결과에 이 질문을 만들어 드려요.</li>
+      <li><b>논문의 검증 방법 그대로</b> · 가짜 단어를 검증할 때처럼 우리말샘 등재와 네이버 블로그·카페의 쓰임을 찾아봐요.</li>
+      <li><b>A~E 분류</b> · AI 답 점검은 논문의 분류 기준을 표현 규칙으로 옮겨 답의 태도를 나눠요.</li>
+    </ol>
+  </section>
+
+  <section class="p-sec" id="codes" aria-labelledby="codes-h">
+    <h2 id="codes-h" class="sec-h">답변 분류 기준 (A~E)</h2>
+    <dl class="codes">
+      <div><dt>A</dt><dd><b>모른다고 함</b> · 모르거나 확인할 수 없다고 말해요.</dd></div>
+      <div><dt>B</dt><dd><b>다른 말로 추정</b> · 오타나 다른 단어로 보고 그 단어를 설명해요.</dd></div>
+      <div><dt>C</dt><dd><b>맥락 요청</b> · 어디서 본 말인지 되물어요.</dd></div>
+      <div><dt>D</dt><dd><b>쪼개서 추측</b> · 단어를 쪼개 뜻을 짐작하되, 추측이라고 밝혀요.</dd></div>
+      <div><dt>E</dt><dd><b>실제 있는 말처럼 단정</b> · 불확실하다는 표시 없이 뜻을 설명해요.</dd></div>
+    </dl>
+  </section>
+
+  <section class="p-sec limits-box" id="limits" aria-labelledby="limits-h">
+    <h2 id="limits-h" class="sec-h">이용 안내와 서비스의 한계</h2>
+    <ul class="limits">
+      <li>모든 신조어를 찾을 수 있는 것은 아니에요. 사용 흔적은 <b>네이버 블로그·카페</b> 글만 살펴봐요.</li>
+      <li>사전에 실리지 않은 표현도 실제로 쓰일 수 있고, 검색 결과가 없다는 것이 <b>없다는 증명</b>은 아니에요.</li>
+      <li>사용 흔적이 있다는 것이 <b>공식적인 단어</b>라는 뜻은 아니에요.</li>
+      <li>AI 답 점검은 답의 <b>유형을 분류</b>할 뿐, 답이 <b>사실인지 검증</b>하지 않아요.</li>
+      <li>개인정보: 서버로 보내는 것은 찾은 낱말 하나뿐이에요. AI 답 점검에 붙여 넣은 글은 보내지도 저장하지도 않고, 최근 찾은 말은 이 기기에만 최대 8개 남아요.</li>
+    </ul>
+  </section>
+  <p class="back-wrap"><a class="primary back-btn" href="./">말 찾기로 돌아가기</a></p>
+</main>
+
+<footer class="foot">
+  <div class="wrap"><p>진짜 있는 말? · Paper to App · 김가은 (2026)</p></div>
+</footer>
+<script src="config.js"></script>
+<script src="nav.js"></script>
+</body>
+</html>

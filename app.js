@@ -56,6 +56,7 @@
 
   // ── 최근 찾은 말 (이 기기에만 저장. 저장이 막힌 브라우저에서는 그 사실을 알린다) ──
   var RKEY = 'jinjja.recent.v1', saveWarned = false;
+  var CLOCK_SVG = '<svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
   function loadRecent() {
     try { var a = JSON.parse(localStorage.getItem(RKEY) || '[]'); return Array.isArray(a) ? a.filter(function (x) { return typeof x === 'string'; }).slice(0, 8) : []; }
     catch (e) { return []; }
@@ -73,7 +74,7 @@
   function renderRecent() {
     var list = loadRecent(), box = $('recent-list');
     box.textContent = '';
-    list.forEach(function (w) { box.appendChild(h('button', { class: 'chip', type: 'button', text: w, onclick: function () { runFind(w); } })); });
+    list.forEach(function (w) { box.appendChild(h('button', { class: 'chip chip-ico', type: 'button', onclick: function () { runFind(w); } }, [h('span', { class: 'ci', 'aria-hidden': 'true', html: CLOCK_SVG }), h('span', { text: w })])); });
     $('recent-empty').hidden = list.length > 0;
     $('recent-clear').hidden = list.length === 0;
     if (!list.length) hideRecentConfirm(false);
@@ -116,7 +117,12 @@
     if (which === 'quiz' && !quizStarted) renderQuizIntro();
   }
   tabs.forEach(function (t, i) {
-    t.addEventListener('click', function () { selectTab(t.id.replace('tab-', '')); });
+    t.addEventListener('click', function () {
+      var k = t.id.replace('tab-', '');
+      selectTab(k);
+      markNav(k === 'find' ? 'find' : k);
+      if (k === 'find') { $('q').focus({ preventScroll: true }); $('top').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
     t.addEventListener('keydown', function (e) {
       if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
         var next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
@@ -185,19 +191,8 @@
     ]);
   }
 
-  function paperDetail(q, display) {
-    var s = shapeOf(q), I = s.info, kids = [h('summary', { text: '논문 근거 자세히 보기' })];
-    if (I) {
-      kids.push(h('p', null, ['생김새: ', h('b', { text: I.label }), '. ', I.why]));
-      kids.push(h('div', { class: 'bars' }, [bar('“' + display + ' 무슨 뜻이야?”', I.premise), bar('“' + display + '라는 말이 실제로 있어?”', I.confirm, true)]));
-      kids.push(h('ul', { class: 'models', 'aria-label': 'AI별로 뜻을 단정한 비율' }, I.models.map(function (m) {
-        return h('li', null, [m.name + ' ', h('b', { text: L.pct(m) + '%' })]);
-      })));
-      kids.push(h('p', { class: 'src', text: '수치는 ' + I.source + ' (두 질문 방식, 세 AI 각 회사 API로 물은 결과).' }));
-    } else {
-      kids.push(h('p', { text: '논문은 한글 세 글자 가짜 말만 시험했어요. 그래도 “무슨 뜻이야?”보다 “실제로 있어?”라고 물을 때 AI가 훨씬 덜 지어냈다는 결과(가짜 줄임말 ' + pctText(HL.premise) + ' → ' + pctText(HL.confirm) + ')는 참고할 수 있어요.' }));
-    }
-    return h('details', { class: 'why' }, kids);
+  function paperDetail() {
+    return h('p', { class: 'paper-more' }, [h('a', { href: 'paper.html#results', text: '이 수치의 근거 보기 (논문 이야기) →' })]);
   }
 
   function bar(label, o, safe) {
@@ -546,6 +541,7 @@
   function runFind(raw) {
     closeAc();
     lookupSeq++;
+    if ($('panel-find').hidden) selectTab('find');
     var input = $('q');
     if (typeof raw === 'string') input.value = raw;
     var value = input.value;
@@ -686,6 +682,10 @@
       onclick: function () { curCho = c; shown = PAGE; pressGroup('chos', c); renderBrowse(); } }));
   });
   $('browse-q').addEventListener('input', function () { browseQ = this.value.slice(0, 20); shown = PAGE; renderBrowse(); });
+  $('browse-form').addEventListener('submit', function (e) {
+    e.preventDefault(); browseQ = $('browse-q').value.slice(0, 20); shown = PAGE; renderBrowse();
+    $('browse-count').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
 
   // ── 2. AI 답 점검 ──
   var checkOut = $('check-result');
@@ -1087,18 +1087,35 @@
     ]));
   }
 
-  // ── 소개 칸: 숫자를 한곳(Logic.PAPER)에서 가져와 화면마다 같게 ──
-  $('f-premise').textContent = pctText(HL.premise);
-  $('f-confirm').textContent = pctText(HL.confirm);
-  $('f-abbr').textContent = pctText(HL.abbr);
-  $('f-random').textContent = (HL.random.e / HL.random.n * 100).toFixed(1) + '%';
-  $('f-models').textContent = '줄임말처럼 생긴 가짜 말을 단정한 비율은 ' + P.abbr.models.map(function (m) { return m.name + ' ' + L.pct(m) + '%'; }).join(', ') + '였어요(각 회사 API로 물은 결과라 채팅 앱과는 다를 수 있어요).';
-  $('f-basis').textContent = '모든 수치: ' + HL.basis + ', 연구자 분류 기준. 가짜 줄임말 30개·낯선 글자 말 30개, 각 180건. 그래프와 표는 아래 “연구 결과 한눈에”에 있어요.';
-  // 휴대폰에서는 소개를 접어 두어 결과 아래가 길어지지 않게
-  try { if (window.matchMedia('(max-width: 1023px)').matches) $('about-d').removeAttribute('open'); } catch (e) { /* 무시 */ }
+  // 논문 수치·연구 소개는 논문 이야기 페이지(paper.html)로 옮겼다. 메인에서는 제보 링크만 설정한다.
   if (CONFIG.reportUrl && safeLink(CONFIG.reportUrl)) { $('report-link').href = CONFIG.reportUrl; $('report-link').hidden = false; }
-  // 논문 원문: 실제 공개 주소가 설정됐을 때만 링크를 보인다 (없는 링크를 만들지 않음)
-  if (CONFIG.paperUrl && safeLink(CONFIG.paperUrl)) { $('paper-link').href = CONFIG.paperUrl; $('paper-link-row').hidden = false; }
+
+  // ── 상단 메뉴·주소의 #check 같은 표시로 화면 바꾸기 (논문 이야기 페이지에서 돌아올 때도) ──
+  var VIEWS = { home: ['find', 'top'], find: ['find', 'q'], browse: ['find', 'browse'], check: ['check'], quiz: ['quiz'] };
+  function goView(key, smooth) {
+    var v = VIEWS[key]; if (!v) return;
+    selectTab(v[0]);
+    var bh = smooth ? 'smooth' : 'auto';
+    if (v[1] === 'top') window.scrollTo({ top: 0, behavior: bh });
+    else if (v[1] === 'q') { $('q').focus({ preventScroll: true }); $('top').scrollIntoView({ behavior: bh, block: 'start' }); }
+    else if (v[1] === 'browse') { if (!$('find-result').textContent.trim()) showHome(true); $('browse').scrollIntoView({ behavior: bh, block: 'start' }); }
+    else $('main').scrollIntoView({ behavior: bh, block: 'start' });
+    markNav(key);
+  }
+  function markNav(key) {
+    Array.prototype.forEach.call(document.querySelectorAll('#nav a[data-view]'), function (a) {
+      if (a.getAttribute('href') === '#' + key) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('#nav a[data-view]'), function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      var key = a.getAttribute('href').slice(1);
+      try { history.replaceState(null, '', location.pathname + location.search + '#' + key); } catch (er) { /* 무시 */ }
+      goView(key, true);
+    });
+  });
+  window.addEventListener('hashchange', function () { goView(location.hash.slice(1), true); });
 
   // ── 홈 화면에 추가: 기기별 그림 안내 ──
   var ICON = {
@@ -1145,6 +1162,8 @@
   try {
     var q0 = new URLSearchParams(location.search).get('q');
     if (q0) runFind(q0.slice(0, 200));
+    else if (VIEWS[location.hash.slice(1)]) goView(location.hash.slice(1), false);
+    else markNav('home');
   } catch (e) { /* 무시 */ }
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('sw.js').catch(function () {});
