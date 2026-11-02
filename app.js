@@ -543,11 +543,9 @@
       return h('article', { class: 'entry s-ok entry-dict' }, kids);
     }
     if (r.state === 'used') {
-      var wide = r.spread === 'wide', where = '이 앱 사전' + (r.dictChecked ? '과 우리말샘' : '') + '에는 없지만, ';
+      var where = '이 앱 사전' + (r.dictChecked ? '과 우리말샘' : '') + '에는 없지만, ';
       var hasSrc = web.sources !== null && web.sources !== undefined;
-      kids.push(verdict(wide ? '널리\n쓰여요' : '일부에서\n쓰여요', 'ok', display, wide
-        ? where + (hasSrc ? '서로 다른 블로그·카페 ' + web.sources + '곳의 글 ' + web.count + '건' : '네이버 블로그·카페 글 ' + web.count + '건') + '에서 이 말이 그대로 쓰였어요.'
-        : where + '네이버 블로그·카페 글 ' + web.count + '건에서 쓰였어요.' + (hasSrc ? ' 쓴 곳은 ' + web.sources + '곳이에요.' : '') + ' 특정 모임이나 팬덤 안에서만 쓰는 말일 수 있어요.'));
+      kids.push(verdict('쓰인\n흔적 있음', 'ok', display, where + '네이버 블로그·카페 글 ' + web.count + '건' + (hasSrc ? '(서로 다른 ' + web.sources + '곳)' : '') + '에서 이 말이 그대로 쓰였어요.'));
       kids.push(statusLine('used', '공식적인 단어라거나 널리 통하는 표현이라는 뜻은 아니에요.'));
       kids.push(usageInfo(web, true));
       kids.push(riskBox(q, 'real'));
@@ -555,13 +553,13 @@
       kids.push(samplesBlock(web, display));
       kids.push(questionBlock(display, 'AI에게 뜻을 물어본다면'));
       kids.push(evidenceBlock(rows));
-      kids.push(actions(display, true, { links: links, copy: function () { return copyText(display, 'used', [(wide ? '널리 쓰여요' : '일부에서 쓰여요') + ' · ' + usageText(web), ask], rows); } }));
+      kids.push(actions(display, true, { links: links, copy: function () { return copyText(display, 'used', ['쓰인 흔적 있음 · ' + usageText(web), ask], rows); } }));
       return h('article', { class: 'entry s-ok' }, kids);
     }
     if (r.state === 'rare') {
       kids.push(verdict('드물게\n쓰여요', 'warn', display, '네이버 블로그·카페 글 ' + web.count + '건에서만 이 말을 찾았어요. 아주 새로 생겼거나 일부에서만 쓰는 말일 수 있어요.'));
       kids.push(statusLine('more', '사용 흔적은 ' + web.count + '건뿐이에요.'));
-      kids.push(usageInfo(web, false));
+      kids.push(usageInfo(web, true));
       kids.push(riskBox(q, 'rare'));
       kids.push(samplesBlock(web, display));
       kids.push(questionBlock(display, null, true));
@@ -614,10 +612,12 @@
     return parts.join(' · ');
   }
   function usageInfo(web, withRule) {
-    var S = L.SPREAD || { wideCount: 20, wideSources: 10 };
+    var S = L.SPREAD || { wideSources: 10 };
+    var few = web.sources !== null && web.sources !== undefined && web.sources < S.wideSources;
     return h('div', { class: 'usage' }, [
       h('p', { class: 'usage-line' }, [h('b', { text: '쓰임 정보 ' }), usageText(web)]),
-      withRule ? h('p', { class: 'src', text: '“널리 쓰여요”는 글 ' + S.wideCount + '건 이상, 서로 다른 블로그·카페 ' + S.wideSources + '곳 이상에서 쓰였을 때예요(논문이 아닌 이 앱의 기준). 검색 결과는 블로그·카페 각각 최대 100건까지만 살펴봐요.' }) : null
+      few ? h('p', { class: 'usage-few', text: '글을 쓴 곳이 ' + web.sources + '곳뿐이에요. 몇몇 모임이나 팬덤 안에서만 쓰는 말일 수 있어요(앱의 안내).' }) : null,
+      withRule ? h('p', { class: 'src', text: '도장 기준: 따옴표 검색에서 이 말이 그대로 쓰인 글이 0건이면 “쓰인 흔적 없음”(논문이 가짜 말을 검증한 기준과 같아요), 1~4건이면 “드물게 쓰여요”, 5건 이상이면 “쓰인 흔적 있음”(1~4건·5건은 앱이 정한 구분). 블로그·카페 각각 최대 100건까지만 살펴봐요.' }) : null
     ]);
   }
 
@@ -1030,8 +1030,7 @@
     fake: { label: '논문에서 만든 가짜 말', group: 'none' },
     none: { label: '쓰인 흔적 없음 (우리말샘·네이버 블로그·카페)', group: 'none' },
     rare: { label: '드물게 쓰여요', group: 'rare' },
-    wide: { label: '널리 쓰여요 (네이버 블로그·카페)', group: 'used' },
-    some: { label: '일부에서 쓰여요 (네이버 블로그·카페)', group: 'used' },
+    used: { label: '쓰인 흔적 있음 (네이버 블로그·카페)', group: 'used' },
     dict: { label: '국립국어원 우리말샘에 있음', group: 'used' },
     paper: { label: '우리말샘 등재 확인 (논문 대조군)', group: 'used' },
     app: { label: '이 앱이 정리한 신조어', group: 'used' },
@@ -1096,10 +1095,10 @@
     box.appendChild(h('p', { class: 'uv-t', text: '“' + word + '”이(가) 실제로 쓰이는지 우리말샘과 네이버 블로그·카페에서 확인하고 있어요…' }));
     fetchLookup(word, function (o) {
       var st = o.r.state;
-      var ex = st === 'dict' ? 'dict' : st === 'used' ? (o.r.spread === 'wide' ? 'wide' : 'some') : st === 'rare' ? 'rare' : st === 'none' ? 'none' : 'unknown';
+      var ex = st === 'dict' ? 'dict' : st === 'used' ? 'used' : st === 'rare' ? 'rare' : st === 'none' ? 'none' : 'unknown';
       var extra = null;
       if (ex === 'dict' && o.r.dict && o.r.dict.senses[0]) extra = h('p', { class: 'src', text: '우리말샘 뜻: ' + o.r.dict.senses[0].def });
-      else if ((ex === 'wide' || ex === 'some' || ex === 'rare') && o.r.web) extra = h('p', { class: 'src', text: usageText(o.r.web) });
+      else if ((ex === 'used' || ex === 'rare') && o.r.web) extra = h('p', { class: 'src', text: usageText(o.r.web) });
       fill(ex, extra);
     });
     return box;
@@ -1290,6 +1289,24 @@
       h('ul', { class: 'qr-ev' }, l.ex.ev.map(function (t) { return h('li', { text: t }); }))
     ]);
   }
+  // 나 대 AI: 이번 퀴즈의 가짜 말을 모양별로 나눠, 내가 진짜로 고른 비율과 논문에서 AI가 뜻을 단정한 비율을 나란히 (논문 결과 ①)
+  function vsAi() {
+    var rows = ['abbr', 'suffix', 'random'].map(function (t) {
+      var items = quiz.log.filter(function (l) { return !l.it.real && l.it.fake.type === t; });
+      if (!items.length) return null;
+      var fooled = items.filter(function (l) { return l.said; }).length;
+      return h('tr', null, [h('th', { scope: 'row', text: P[t].label }), h('td', { text: fooled + ' / ' + items.length + '개' }), h('td', { text: (Math.round(P[t].overall.e / P[t].overall.n * 1000) / 10) + '% (' + P[t].overall.e + '/' + P[t].overall.n + '건)' })]);
+    }).filter(Boolean);
+    if (!rows.length) return null;
+    return h('div', { class: 'vs-ai' }, [
+      h('h3', { class: 'q-h', text: '나 대 AI · 어떤 모양에 속았나요?' }),
+      h('table', { class: 'vs-table' }, [
+        h('thead', null, [h('tr', null, [h('th', { scope: 'col', text: '가짜 말의 모양' }), h('th', { scope: 'col', text: '나: 진짜라고 고름' }), h('th', { scope: 'col', text: '논문의 AI: 뜻을 단정' })])]),
+        h('tbody', null, rows)
+      ]),
+      h('p', { class: 'src', text: '논문에서 AI는 실제 신조어처럼 만든 모양(줄임말·꼬리 붙인 말)에 더 자주 속았어요. AI 비율은 세 AI·두 질문 합산이고, 꼬리 붙인 말은 연구 1만의 결과예요. 내 결과는 이번 몇 문제라 참고로만 보세요.' })
+    ]);
+  }
   function quizEnd() {
     quizBox.textContent = '';
     var n = quiz.items.length, wrong = quiz.log.filter(function (l) { return !l.good; });
@@ -1311,6 +1328,7 @@
         h('div', null, [h('dt', { text: '가짜를 진짜로 고름' }), h('dd', { text: quiz.fooled + '개' })])
       ]),
       h('p', null, quiz.fooled ? ['가짜 말 ' + quiz.fooled + '개를 진짜로 골랐어요. 사람도 줄임말처럼 생기면 쉽게 속아요. AI도 마찬가지였어요(가짜 줄임말에 “무슨 뜻이야?”로 물으면 ' + pctText(HL.premise) + '가 뜻을 단정).'] : ['가짜 말을 모두 알아봤어요! 그래도 AI는 줄임말처럼 생긴 가짜 말에 “무슨 뜻이야?”로 물으면 ' + pctText(HL.premise) + '가 뜻을 단정했어요.']),
+      vsAi(),
       h('p', null, [h('b', { text: '모르는 말은 “무슨 뜻이야?”보다 “실제로 있어?”를 먼저 물어보세요.' })]),
       h('h3', { class: 'q-h', text: '10문제 진행 결과' }),
       h('ol', { class: 'q-list' }, quiz.log.map(function (l) {

@@ -1148,3 +1148,30 @@ body[data-tab="check"] .hero .finding, body[data-tab="quiz"] .hero .finding { di
 .usage-verdict .uv-more { font-size: 14.5px; }
 .lbl-sub { margin-top: 12px; font-size: 14px; }
 #cm { min-height: var(--tap); font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); max-width: 260px; width: 100%; }
+.usage .usage-few { margin: 6px 0 0; font-size: 14px; color: var(--warn); font-weight: 600; }
+
+/* 20차: 논문 결과 → 앱 기능 → 앱이 더한 것 표 */
+.use-table-wrap { overflow-x: auto; }
+.use-table { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--card); border-radius: 12px; overflow: hidden; }
+.use-table th, .use-table td { text-align: left; vertical-align: top; padding: 10px 12px; border-top: 1px solid var(--line); line-height: 1.55; }
+.use-table thead th { background: var(--brand-soft); color: var(--ink); font-weight: 800; border-top: 0; }
+.use-table tbody th { font-weight: 600; width: 34%; }
+.use-table td:last-child { color: var(--muted); }
+.ut-k { display: inline-block; font-size: 11.5px; font-weight: 800; color: var(--brand); background: var(--brand-soft); border-radius: 6px; padding: 0 6px; margin-right: 4px; }
+@media (max-width: 720px) {
+  .use-table thead { display: none; }
+  .use-table, .use-table tbody, .use-table tr, .use-table th, .use-table td { display: block; width: 100%; }
+  .use-table tr { border-top: 1px solid var(--line); padding: 8px 0; }
+  .use-table th, .use-table td { border-top: 0; padding: 4px 12px; }
+  .use-table tbody th { width: auto; }
+  .use-table td:nth-of-type(1)::before { content: "앱에서 쓰는 곳 · "; font-weight: 700; color: var(--ink); }
+  .use-table td:nth-of-type(2)::before { content: "앱이 더한 것 · "; font-weight: 700; color: var(--ink); }
+}
+
+/* 21차: 퀴즈 나 대 AI */
+.vs-ai { margin: 14px 0; }
+.vs-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.vs-table th, .vs-table td { text-align: left; padding: 8px 10px; border-top: 1px solid var(--line); }
+.vs-table thead th { background: var(--brand-soft); border-top: 0; font-weight: 800; }
+.vs-ai .src { margin-top: 6px; }
+.sg-more { margin: 10px 0 0; font-size: 14px; color: var(--muted); }

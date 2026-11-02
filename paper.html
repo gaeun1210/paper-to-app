@@ -136,11 +136,21 @@
 
   <section class="p-sec" id="use" aria-labelledby="use-h">
     <h2 id="use-h" class="sec-h">앱이 이 결과를 쓰는 방법</h2>
-    <ol class="use-list">
-      <li><b>뜻보다 있는지부터</b> · “실제로 있어?”라고 먼저 확인할 때 AI가 훨씬 덜 지어냈어요. 그래서 앱이 그 말이 실제로 쓰이는지부터 확인해 보여 주고, AI에게 물을 때도 이 질문을 쓰게 해요.</li>
-      <li><b>논문의 검증 방법을 따라</b> · 논문은 가짜 단어를 우리말샘 미등재와 구글·네이버 따옴표 검색 0건으로 검증했어요. 앱은 같은 방식으로 우리말샘과 네이버 블로그·카페 따옴표 검색을 찾아봐요(구글 검색은 쓰지 않아요).</li>
-      <li><b>A~E 분류</b> · AI 답 점검은 논문의 분류 기준을 표현 규칙으로 옮겨 답의 태도를 나누고, 물어본 말이 실제로 쓰이는지와 합쳐 결론을 알려 줘요(논문이 본 경우: 없는 말에 뜻을 단정한 답).</li>
-    </ol>
+    <p class="results-lead">논문의 결과·방법이 앱의 어느 기능에 쓰였는지, 그리고 논문에는 없고 앱이 새로 더한 것은 무엇인지 나눠 적었어요.</p>
+    <div class="use-table-wrap">
+    <table class="use-table">
+      <caption class="visually-hidden">논문 결과와 앱 기능의 연결</caption>
+      <thead><tr><th scope="col">논문에서 나온 것</th><th scope="col">앱에서 쓰는 곳</th><th scope="col">앱이 새로 더한 것 (논문 밖)</th></tr></thead>
+      <tbody>
+        <tr><th scope="row"><span class="ut-k">결과</span> 형성 방식: 줄임말·꼬리 붙인 모양의 가짜 말을 AI가 더 자주 단정(25%·30% 대 3.3%)</th><td>말 찾기 결과의 “AI에게 물으면 뜻을 지어낼 위험”, AI 답 점검 종합 판단의 모양 안내, 퀴즈 결과의 “나 대 AI”</td><td>검색한 말의 모양을 판정하는 규칙(논문 가짜 말 70개 중 68개를 논문과 같은 유형으로 판정, 세 글자 한글 말에만 적용)</td></tr>
+        <tr><th scope="row"><span class="ut-k">결과</span> 질문 방식: “실제로 있어?”로 물으면 단정 47% → 3%</th><td>결과마다 “AI에게 이렇게 물어보세요”(논문에서 시험한 질문), ChatGPT·Claude·Gemini로 바로 열기</td><td>낱말에 붙인 따옴표, 고를 때만 붙는 “확실하지 않으면 모른다고 답해 줘”(논문에서 시험하지 않은 문장)</td></tr>
+        <tr><th scope="row"><span class="ut-k">결과</span> AI마다 다름: 가짜 줄임말 단정 Claude 2% · ChatGPT 23% · Gemini 50%</th><td>AI 버튼 옆 “논문 ○%”(말의 모양에 맞는 수치), AI 답 점검에서 고른 AI의 논문 결과</td><td>—</td></tr>
+        <tr><th scope="row"><span class="ut-k">결과</span> 실제 신조어 20개는 세 AI 모두 뜻을 설명(120건, 모른다고 한 답 0건)</th><td>쓰이는 말 결과의 안내 “AI 설명을 참고할 수 있지만 맞는지는 비교해 보세요”</td><td>—</td></tr>
+        <tr><th scope="row"><span class="ut-k">방법</span> 가짜 말 검증: 우리말샘 미등재 + 구글·네이버 따옴표 검색 0건</th><td>말 찾기의 “쓰인 흔적 없음” 판정(0건 기준이 같음)</td><td>구글 대신 네이버 블로그·카페 검색 API, “드물게 쓰여요(1~4건)·쓰인 흔적 있음(5건 이상)” 구분, 쓰임 정보(곳 수·날짜)</td></tr>
+        <tr><th scope="row"><span class="ut-k">방법</span> 응답 분류 기준 A~E(표 3)</th><td>AI 답 점검의 분류, 종합 판단(논문이 본 경우: 없는 말에 뜻을 단정한 답)</td><td>분류를 표현 규칙으로 옮긴 자동 판정. 논문 응답으로 채점: 규칙을 다듬지 않은 연구 2의 300건에서 “단정(E)인가” 94.0% 일치(카파 0.86), A~E 다섯 갈래는 61% 일치</td></tr>
+      </tbody>
+    </table>
+    </div>
   </section>
 
   <section class="p-sec" id="codes" aria-labelledby="codes-h">
