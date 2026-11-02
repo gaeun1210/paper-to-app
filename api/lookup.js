@@ -9,10 +9,16 @@
 var TIMEOUT_MS = 4500;
 var USED_MIN = 5; // 실제 글 5건 이상에서 그대로 쓰이면 "실제로 쓰여요"
 
+var SUB = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉' };
+var SUP = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '+': '⁺', '-': '⁻' };
 function clean(s) {
+  // 사전 뜻풀이에는 &lt;sub&gt;2&lt;/sub&gt; 처럼 글자로 바뀐 태그가 섞여 온다: 먼저 글자를 되돌린 뒤 태그를 지운다
   return String(s || '')
+    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/<sub>\s*([0-9]+)\s*<\/sub>/gi, function (m, d) { return d.split('').map(function (c) { return SUB[c]; }).join(''); })
+    .replace(/<sup>\s*([0-9+\-]+)\s*<\/sup>/gi, function (m, d) { return d.split('').map(function (c) { return SUP[c]; }).join(''); })
     .replace(/<[^>]*>/g, '')
-    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+    .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ').trim();
 }
 function bare(s) { return String(s || '').normalize('NFC').replace(/[\s^\-·ㆍ]/g, ''); }
@@ -67,7 +73,7 @@ async function checkDict(word) {
       var list = Array.isArray(it.sense) ? it.sense : (it.sense ? [it.sense] : []);
       list.forEach(function (s) {
         if (s && s.definition && senses.length < 3) {
-          senses.push({ def: clean(s.definition), pos: clean(s.pos), type: clean(s.type), link: /^https?:\/\//.test(s.link || '') ? s.link : '' });
+          senses.push({ def: clean(s.definition), pos: clean(s.pos), type: clean(s.type), cat: clean(s.cat), link: /^https?:\/\//.test(s.link || '') ? s.link : '' });
         }
       });
     });
